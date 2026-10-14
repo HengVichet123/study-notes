@@ -1,0 +1,199 @@
+---
+title: Belief propagation and semi-global matching
+course: M1 Seminar · Computer Vision
+section: 40.3.2.3
+chapter: 40 · Stereo vision
+date: 2026-10-14
+summary: How to turn noisy per-pixel matches into a clean, dense depth map by making neighbouring pixels agree.
+---
+
+## The problem
+
+After [Harris](#/seminar-40-3-2-1-harris) and [descriptors](#/seminar-40-3-2-2-local-descriptors) we have reliable matches at a few corners. But we want a disparity, and so a depth, at **every** pixel.
+
+If every pixel simply picks the disparity with the lowest matching cost, the result is very noisy:
+
+- in **textureless** areas (a white wall, the lamp in Fig. 40.7) every disparity looks about equally good, so the choice is random,
+- in **repeated texture** several disparities look good,
+- **noise** and **occlusions** add more wrong picks.
+
+<Goal>
+Use one extra piece of knowledge: **real surfaces are mostly smooth**, so neighbouring pixels should usually have similar disparities. Let confident pixels fix their unsure neighbours, while still allowing real jumps at object borders.
+</Goal>
+
+## Step 0: the cost volume
+
+For every pixel $p$ and every candidate disparity $d$, compute a matching cost $C(p, d)$: how badly the left pixel matches the right pixel shifted by $d$ (for example the absolute difference of a small patch, or a descriptor distance). Low = good match.
+
+<Figure caption="The cost volume. For each pixel (x, y) there is a column of costs, one for each disparity d. Choosing the lowest cost in each column alone is called winner-take-all.">
+  <CostVolume />
+</Figure>
+
+**Winner-take-all** picks $D(p) = \arg\min_d C(p, d)$ for each pixel on its own. That is the noisy result we want to improve.
+
+## Step 1: write down what a good answer is
+
+Choose a disparity $D_p$ for every pixel to minimise one total cost:
+
+<KeyEq name="Energy for stereo (a Markov random field)">
+$$
+E(D) = \underbrace{\sum_{p} C(p, D_p)}_{\text{match well}} \;+\; \underbrace{\sum_{(p,q)\ \text{neighbours}} V(D_p, D_q)}_{\text{neighbours agree}}
+$$
+</KeyEq>
+
+The smoothness penalty $V$ used by SGM:
+
+$$
+V(D_p, D_q) = \begin{cases} 0 & \text{same disparity} \\ P_1 & |D_p - D_q| = 1 \quad \text{(slanted surface)} \\ P_2 & |D_p - D_q| > 1 \quad \text{(jump, object border)} \end{cases}
+\qquad P_1 < P_2
+$$
+
+- A small $P_1$ allows gentle slopes such as a floor or a tilted wall.
+- A larger $P_2$ makes jumps expensive, so they only happen where the data really demands it.
+
+**The difficulty:** finding the exact minimum of $E$ over a whole 2D image is NP-hard. Belief propagation and semi-global matching are two ways around this.
+
+## Belief propagation
+
+### The graph
+
+Think of the image as a graph: each pixel is a **node**, and each pixel is connected to its 4 neighbours. Each node must choose a **label** (its disparity).
+
+### Messages
+
+A **message** from pixel $p$ to its neighbour $q$ is a list with one number per disparity. It says: *"if you, q, choose disparity d, this is the lowest cost my side of the image would have to pay."*
+
+<KeyEq name="Min-sum message">
+$$
+m_{p \to q}(d) = \min_{d'} \Big[\, C(p, d') + V(d', d) + \sum_{k \in N(p) \setminus q} m_{k \to p}(d') \,\Big]
+$$
+</KeyEq>
+
+Read it in three parts:
+
+- $C(p, d')$: p's own cost if p picks $d'$,
+- $V(d', d)$: the penalty for p picking $d'$ while q picks $d$,
+- $\sum m_{k \to p}(d')$: what p's **other** neighbours told p (not q's own message, so information is not counted twice).
+
+p tries every $d'$ and reports the cheapest. So information travels step by step across the image. That is the "propagation".
+
+### Beliefs
+
+Once messages have travelled, each pixel adds its own cost and everything it heard:
+
+<KeyEq name="Belief and decision">
+$$
+b_p(d) = C(p, d) + \sum_{k \in N(p)} m_{k \to p}(d), \qquad D_p = \arg\min_d\, b_p(d)
+$$
+</KeyEq>
+
+### A worked example
+
+Three pixels in a row, A – B – C. Disparities 3, 4 or 5. A and C are confident about 3. B is in a textureless spot: it slightly prefers 5, but not by much.
+
+<Figure caption="B's own cost alone would pick 5. The messages from A and C say that any disparity other than 3 costs them a penalty. Adding everything, B's belief is lowest at 3, so the confident neighbours fix B.">
+  <MessageChain />
+</Figure>
+
+How the message $m_{A \to B}$ is computed:
+
+- $d = 3$: A picks 3 too: $0 + 0 = 0$.
+- $d = 4$: A picks 3 and pays the small penalty: $0 + 2 = 2$ (A picking 4 itself would cost 5).
+- $d = 5$: A picks 3 and pays the jump: $0 + 6 = 6$ (A picking 4 costs $5 + 2 = 7$, picking 5 costs 8).
+
+### Exact or not?
+
+- On a **chain** or a **tree** (no loops), one pass of messages in each direction gives the **exact** minimum. On a chain this is the same as dynamic programming (Viterbi).
+- An image grid has **loops** (four pixels around a square). There you must repeat the messages many times ("loopy BP") and hope they settle. It usually works well, but it is slow and not guaranteed exact.
+
+<Figure caption="BP is exact on chains and trees. A pixel grid is full of small loops (orange), so BP on images is only approximate.">
+  <GraphLoops />
+</Figure>
+
+This is the book's point: belief propagation gives exact inference only when the graph is a chain or a tree.
+
+## Semi-global matching (SGM)
+
+SGM (Hirschmüller, 2005 and 2008) uses the case where the problem is easy. **Along a single 1D path, the minimisation is exact and fast**, so SGM solves many 1D paths, from different directions, and adds them up.
+
+### One path
+
+Walk along a direction $r$ (for example left → right). For each pixel and disparity, keep the cheapest total cost of any path that arrives at $p$ with disparity $d$:
+
+<KeyEq name="SGM path cost (Hirschmüller)">
+$$
+L_r(p, d) = C(p, d) + \min\!\Big( L_r(p{-}r, d),\; L_r(p{-}r, d{\pm}1) + P_1,\; \min_k L_r(p{-}r, k) + P_2 \Big) - \min_k L_r(p{-}r, k)
+$$
+</KeyEq>
+
+In words: my cost at disparity $d$ is my own matching cost, plus the cheapest way to arrive from the previous pixel on the path:
+
+- with the **same** disparity: free,
+- **changing by 1**: pay $P_1$,
+- **jumping** from anything: pay $P_2$.
+
+The last term subtracts a constant, which keeps the numbers from growing along the path. It does not change which $d$ is best.
+
+This is exactly a BP message along a chain, so each path is solved exactly.
+
+### Try it on one row
+
+<Figure caption="One image row with synthetic matching costs. Orange: each pixel picks its own best disparity. Blue: the exact minimum of the energy on this row (left→right and right→left paths combined). Move the slider to change the jump penalty.">
+  <ScanlineSmoothing />
+</Figure>
+
+Using only one direction (or only rows) gives "streaks": each row is smooth on its own, but rows disagree with each other. That is why SGM uses many directions.
+
+### Many directions
+
+Run the path recursion along 8 directions (or 16), so every pixel gets information from all around it, then add them:
+
+<KeyEq name="Aggregate and choose">
+$$
+S(p, d) = \sum_{r} L_r(p, d), \qquad D_p = \arg\min_d\, S(p, d)
+$$
+</KeyEq>
+
+<Figure caption="SGM sends 8 one-dimensional paths into every pixel p, from left, right, up, down and the 4 diagonals. Each path is solved exactly; their sum approximates the full 2D solution.">
+  <SgmDirections />
+</Figure>
+
+### Clean-up
+
+1. **Sub-pixel:** fit a parabola through $S(p, d-1)$, $S(p, d)$, $S(p, d+1)$ to get a disparity between integers.
+2. **Left–right check:** compute the disparity map from the right image too. If the two disagree at a pixel, it is probably occluded (seen by one camera only), so mark it invalid.
+3. **Median filter** to remove small speckles. Optionally fill holes from neighbours.
+
+### Why "semi-global"
+
+- **Local** methods (a window per pixel, winner-take-all): fast but noisy.
+- **Global** methods (loopy BP, graph cuts on the full 2D energy): accurate but slow.
+- **Semi-global**: exact on 1D paths, many directions combined. Nearly as accurate as global, with cost proportional to (pixels × disparities × directions), regular and easy to run on a GPU or FPGA. It was used in many car stereo cameras.
+
+## What it gives us
+
+A dense disparity map, and with $Z = fB/d$ a depth for every valid pixel, from only two images. Learning-based stereo (40.4) replaces the hand-made costs and penalties with networks, but many of them still build a cost volume and aggregate it, the same structure as here.
+
+<SayIt>
+Matching each pixel alone is noisy, so we minimise an energy with a data term and a smoothness term with penalties P1 for small changes and P2 for jumps. Belief propagation passes min-sum messages between neighbours; it is exact on chains and trees but only approximate on the loopy pixel grid. Semi-global matching solves the energy exactly along 1D paths with dynamic programming, in 8 or 16 directions, sums the path costs and takes the minimum, so it is nearly as good as global methods at the speed of local ones.
+</SayIt>
+
+<QAList>
+<QA q="What is the difference between BP and SGM in one sentence?">
+BP passes messages over the whole 2D grid many times (approximate, slow); SGM passes them only along straight 1D paths once (each exact, fast) and adds the paths up.
+</QA>
+<QA q="Why is the 2D problem hard but the 1D problem easy?">
+On a chain, the best cost at a pixel depends only on the previous pixel, so you can solve it in one sweep (dynamic programming). In 2D the loops mean every choice affects pixels that come back around to it, and no sweep order handles that exactly.
+</QA>
+<QA q="Why two penalties, P1 and P2?">
+P1 (small) lets surfaces slant smoothly by one disparity step at a time. P2 (large) allows real depth jumps at object borders, but only where the matching cost strongly asks for one. SGM also often lowers P2 where the image has a strong edge, since object borders usually are image edges.
+</QA>
+<QA q="What does 'min-sum' mean?">
+Messages add costs (sum) and choose the best option (min). The probability version of BP uses products and sums instead; taking negative logarithms turns it into min-sum.
+</QA>
+<QA q="Is SGM's result the same as the true 2D minimum?">
+No. Each path is exact, but adding paths is an approximation. In practice it is close, and much better than any single direction.
+</QA>
+</QAList>
+
+**References.** H. Hirschmüller, "Stereo Processing by Semiglobal Matching and Mutual Information", IEEE TPAMI 2008. P. F. Felzenszwalb, D. P. Huttenlocher, "Efficient Belief Propagation for Early Vision", IJCV 2006. A. Torralba, P. Isola, W. T. Freeman, *Foundations of Computer Vision*, Sec. 40.3.2.3, [visionbook.mit.edu](https://visionbook.mit.edu/3d_scene_understanding_stereo.html).

@@ -262,3 +262,19 @@ text.fill-orange { fill: #c46a00; } text.fill-green { fill: #1f8a3b; }
 .hog-hist { background: var(--card); border-radius: 10px; padding: 10px 12px; }
 .hog-hist-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
 text.fill-blue { fill: var(--blue); }
+
+/* stereo interpolation figures */
+.fig.wide-fig { max-width: 640px; }
+.legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 16px; font-size: 13px; color: var(--label-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { display: inline-block; width: 18px; height: 4px; border-radius: 2px; }
+.sw-true { background: var(--label-3); height: 6px; }
+.sw-wta { background: var(--orange); width: 8px; height: 8px; border-radius: 50%; }
+.sw-dp { background: var(--blue); }
+.num-table { border-collapse: collapse; margin: 0 auto; font-size: 14px; font-variant-numeric: tabular-nums; background: var(--card); border-radius: 10px; overflow: hidden; }
+.num-table th, .num-table td { padding: 7px 12px; text-align: center; border-bottom: 0.5px solid var(--sep); }
+.num-table th[scope="row"] { text-align: left; font-weight: 500; white-space: nowrap; }
+.num-table thead th { font-size: 12px; color: var(--label-2); font-weight: 600; }
+.num-table td.hi { background: color-mix(in srgb, var(--orange) 22%, var(--card)); font-weight: 700; }
+.num-table td.note { text-align: left; color: var(--label-2); font-size: 13px; }
+.num-table tr:last-child th, .num-table tr:last-child td { border-bottom: 0; font-weight: 700; }
