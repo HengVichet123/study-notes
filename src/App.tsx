@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { MDXProvider } from '@mdx-js/react'
 import { courses, notes } from './notes'
@@ -84,89 +84,89 @@ function NotePage() {
   )
 }
 
-function SidebarIcon() {
+function MenuIcon() {
   return (
-    <svg viewBox="0 0 22 18" width="22" height="18" aria-hidden="true">
-      <rect x="1" y="1" width="20" height="16" rx="3.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
-      <line x1="8" y1="1.5" x2="8" y2="16.5" stroke="currentColor" strokeWidth="1.6" />
-      <line x1="3.6" y1="5" x2="5.6" y2="5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      <line x1="3.6" y1="8" x2="5.6" y2="8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    <svg viewBox="0 0 20 16" width="20" height="16" aria-hidden="true">
+      <path d="M1 2h18M1 8h18M1 14h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   )
 }
 
-const SIDEBAR_KEY = 'study-notes:sidebar-hidden'
-const readHidden = () => {
-  try {
-    return localStorage.getItem(SIDEBAR_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-
 export default function App() {
-  const [sidebarHidden, setSidebarHidden] = useState(readHidden)
-  const toggleSidebar = () => setSidebarHidden((h) => !h)
+  const { pathname } = useLocation()
+  const activeSlug = pathname.slice(1) || undefined
+  const current = notes.find((n) => n.slug === activeSlug)
+  const [open, setOpen] = useState(false)
+  const drawerRef = useRef<HTMLElement>(null)
+
   useEffect(() => {
-    try {
-      localStorage.setItem(SIDEBAR_KEY, sidebarHidden ? '1' : '0')
-    } catch {
-      /* storage blocked: the toggle still works for this visit */
-    }
-  }, [sidebarHidden])
-  // Ctrl+Cmd+S toggles the sidebar, as in Mac apps.
+    window.scrollTo(0, 0)
+    setOpen(false) // picking a note closes the drawer
+  }, [pathname])
+
+  useEffect(() => {
+    document.title = current ? `${current.title} · Study Notes` : 'Study Notes'
+  }, [current])
+
+  // Esc closes; Ctrl+Cmd+S toggles, as in Mac apps.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
       if (e.key.toLowerCase() === 's' && e.ctrlKey && e.metaKey) {
         e.preventDefault()
-        toggleSidebar()
+        setOpen((o) => !o)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  const { pathname } = useLocation()
-  const activeSlug = pathname.slice(1) || undefined
+  // Keep the page from scrolling behind the open drawer, and move focus into it.
   useEffect(() => {
-    window.scrollTo(0, 0)
-  }, [pathname])
-  const current = notes.find((n) => n.slug === activeSlug)
-  useEffect(() => {
-    document.title = current ? `${current.title} · Study Notes` : 'Study Notes'
-  }, [current])
+    document.body.style.overflow = open ? 'hidden' : ''
+    if (open) drawerRef.current?.querySelector<HTMLElement>('.is-active, a')?.focus()
+  }, [open])
 
   return (
-    <div className={'shell' + (activeSlug ? ' has-note' : '') + (sidebarHidden ? ' sidebar-hidden' : '')}>
-      <button
-        type="button"
-        className="icon-btn sidebar-toggle"
-        onClick={toggleSidebar}
-        aria-label={sidebarHidden ? 'Show sidebar' : 'Hide sidebar'}
-        aria-expanded={!sidebarHidden}
-        title={(sidebarHidden ? 'Show sidebar' : 'Hide sidebar') + ' (⌃⌘S)'}
+    <div className="shell">
+      <header className="topbar">
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={() => setOpen(true)}
+          aria-label="Open notes list"
+          aria-expanded={open}
+          aria-controls="drawer"
+        >
+          <MenuIcon />
+        </button>
+        <Link to="/" className="topbar-home">Study Notes</Link>
+        {current && <span className="topbar-title">{current.title}</span>}
+      </header>
+
+      <div className={'scrim' + (open ? ' is-open' : '')} onClick={() => setOpen(false)} aria-hidden="true" />
+      <aside
+        id="drawer"
+        ref={drawerRef}
+        className={'drawer' + (open ? ' is-open' : '')}
+        aria-label="Notes list"
+        {...(open ? {} : { inert: '' })}
       >
-        <SidebarIcon />
-      </button>
-      <aside className="sidebar" {...(sidebarHidden ? { inert: '' } : {})}>
-        <div className="sidebar-head">
-          <Link to="/" className="sidebar-title">Study Notes</Link>
+        <div className="drawer-head">
+          <Link to="/" className="drawer-title">Study Notes</Link>
+          <button type="button" className="icon-btn close-btn" onClick={() => setOpen(false)} aria-label="Close notes list">
+            ✕
+          </button>
         </div>
         <NoteList activeSlug={activeSlug} />
       </aside>
-      <div className="detail">
-        <div className="navbar">
-          <Link to="/" className="back">
-            <span className="back-chevron" aria-hidden="true" />
-            Notes
-          </Link>
-          <span className="navbar-title">{current?.title}</span>
-        </div>
+
+      <main className="content">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/:slug" element={<NotePage />} />
         </Routes>
-      </div>
+      </main>
     </div>
   )
 }
