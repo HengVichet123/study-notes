@@ -138,24 +138,23 @@ export default function App() {
 
   return (
     <div className={'shell' + (activeSlug ? ' has-note' : '') + (sidebarHidden ? ' sidebar-hidden' : '')}>
-      <aside className="sidebar" hidden={sidebarHidden}>
+      <button
+        type="button"
+        className="icon-btn sidebar-toggle"
+        onClick={toggleSidebar}
+        aria-label={sidebarHidden ? 'Show sidebar' : 'Hide sidebar'}
+        aria-expanded={!sidebarHidden}
+        title={(sidebarHidden ? 'Show sidebar' : 'Hide sidebar') + ' (⌃⌘S)'}
+      >
+        <SidebarIcon />
+      </button>
+      <aside className="sidebar" {...(sidebarHidden ? { inert: '' } : {})}>
         <div className="sidebar-head">
           <Link to="/" className="sidebar-title">Study Notes</Link>
-          <button type="button" className="icon-btn" onClick={toggleSidebar} aria-label="Hide sidebar" title="Hide sidebar (⌃⌘S)">
-            <SidebarIcon />
-          </button>
         </div>
         <NoteList activeSlug={activeSlug} />
       </aside>
       <div className="detail">
-        {sidebarHidden && (
-          <div className="desk-bar">
-            <button type="button" className="icon-btn" onClick={toggleSidebar} aria-label="Show sidebar" title="Show sidebar (⌃⌘S)">
-              <SidebarIcon />
-            </button>
-            <Link to="/" className="desk-bar-home">Study Notes</Link>
-          </div>
-        )}
         <div className="navbar">
           <Link to="/" className="back">
             <span className="back-chevron" aria-hidden="true" />

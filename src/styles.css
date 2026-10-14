@@ -32,7 +32,7 @@ a { color: var(--blue); text-decoration: none; }
 a:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px solid color-mix(in srgb, var(--blue) 45%, transparent); outline-offset: 2px; border-radius: 8px; }
 
 /* ---------- shell: split view on wide screens, push navigation on phones ---------- */
-.shell { display: grid; grid-template-columns: 320px minmax(0, 1fr); min-height: 100vh; }
+.shell { display: grid; grid-template-columns: 320px minmax(0, 1fr); min-height: 100vh; overflow-x: clip; }
 .sidebar {
   position: sticky; top: 0; height: 100vh; overflow-y: auto;
   border-right: 0.5px solid var(--sep);
@@ -192,32 +192,28 @@ text.fill-orange { fill: #c46a00; } text.fill-green { fill: #1f8a3b; }
 .slider { display: flex; flex-direction: column; gap: 6px; align-items: center; font-size: 15px; color: var(--label-2); }
 .slider input { width: min(100%, 320px); accent-color: var(--blue); }
 
-/* sidebar toggle (laptop only; phones use the list → note navigation) */
-.sidebar-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+/* sidebar toggle: fixed at the top left; the sidebar slides in and out under it (laptop only) */
+.sidebar-head { display: flex; align-items: center; padding-left: 40px; }
 .sidebar-head .sidebar-title { flex: 1; min-width: 0; }
 .icon-btn {
-  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  display: inline-flex; align-items: center; justify-content: center;
   width: 36px; height: 32px; border: 0; border-radius: 8px;
   background: transparent; color: var(--label-2); cursor: pointer;
 }
 .icon-btn:hover { background: var(--fill); color: var(--label); }
-.shell.sidebar-hidden { grid-template-columns: minmax(0, 1fr); }
-.desk-bar {
-  display: none; align-items: center; gap: 6px;
-  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10;
-  height: 48px; padding-inline: max(12px, env(safe-area-inset-left, 0px)) max(12px, env(safe-area-inset-right, 0px));
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px);
-  border-bottom: 0.5px solid var(--sep);
+.sidebar-toggle {
+  position: fixed; z-index: 20;
+  top: calc(env(safe-area-inset-top, 0px) + 26px);
+  left: max(12px, env(safe-area-inset-left, 0px));
 }
-.desk-bar-home { font-weight: 600; color: var(--label); padding: 4px 6px; border-radius: 6px; }
-.desk-bar-home:hover { background: var(--fill); }
+.shell { transition: grid-template-columns 0.28s cubic-bezier(0.32, 0.72, 0, 1); }
+.sidebar { width: 320px; transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1); }
+.shell.sidebar-hidden { grid-template-columns: 0 minmax(0, 1fr); }
+.shell.sidebar-hidden .sidebar { transform: translateX(-100%); }
 @media (min-width: 900px) {
-  .desk-bar { display: flex; }
-  .shell.sidebar-hidden:not(.has-note) .detail { background: var(--bg); }
   .shell.sidebar-hidden .home .note-list { display: block; }
 }
 @media (max-width: 899px) {
-  .sidebar-head .icon-btn { display: none; }
+  .sidebar-toggle { display: none; }
 }
 [hidden] { display: none !important; }
