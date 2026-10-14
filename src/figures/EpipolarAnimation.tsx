@@ -12,11 +12,11 @@ const mul = (a: V3, s: number): V3 => [a[0] * s, a[1] * s, a[2] * s]
 const dot = (a: V3, b: V3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 
 const F = 1 // focal length
-const W = 1.7 // half width of the drawn image plane
-const H = 0.9 // half height
+const W = 0.8 // half width of each photo (image plane)
+const H = 0.55 // half height
 const TMIN = 0.3
-const TMAX = 6
-const P1: [number, number] = [0.35, 0.3] // the chosen pixel in camera 1 (image coords, y up)
+const TMAX = 6.5
+const P1: [number, number] = [0.25, 0.22] // the chosen pixel in camera 1 (image coords, y up)
 
 type Cam = { O: V3; fwd: V3; right: V3; up: V3 }
 const camera = (O: V3, yaw: number): Cam => ({
@@ -85,9 +85,12 @@ export function EpipolarAnimation() {
     return () => cancelAnimationFrame(raf)
   }, [playing])
 
-  const theta = turned ? 0.62 : 0
-  const c1 = useMemo(() => camera([-1, 0, 0], theta), [theta])
-  const c2 = useMemo(() => camera([1, 0, 0], -theta), [theta])
+  // Turned: cameras 4 apart, each turned 56° inward, so each sees the other's centre (the epipole) inside its photo.
+  // Parallel: cameras 2 apart, both looking straight ahead.
+  const theta = turned ? 0.98 : 0
+  const half = turned ? 2 : 1
+  const c1 = useMemo(() => camera([-half, 0, 0], theta), [theta, half])
+  const c2 = useMemo(() => camera([half, 0, 0], -theta), [theta, half])
 
   const dir = add(add(c1.fwd, mul(c1.right, P1[0])), mul(c1.up, P1[1]))
   const Pat = (s: number) => add(c1.O, mul(dir, s))
@@ -106,7 +109,7 @@ export function EpipolarAnimation() {
   const line2 = clipLine([a2.x, a2.y], [b2.x, b2.y])
   const q1 = project(c1, add(c2.O, mul(sub(P, c2.O), 2)))
   const line1 = clipLine(P1, [q1.x, q1.y])
-  const trace = Array.from({ length: 80 }, (_, i) => project(c2, Pat(TMIN + ((t - TMIN) * i) / 79))).filter((q) => q.z > 0 && inside(q.x, q.y))
+  const trace = Array.from({ length: 120 }, (_, i) => project(c2, Pat(TMIN + ((t - TMIN) * i) / 119))).filter((q) => q.z > 0 && inside(q.x, q.y))
 
   const corners = (c: Cam): V3[] => [imgToWorld(c, -W, -H), imgToWorld(c, W, -H), imgToWorld(c, W, H), imgToWorld(c, -W, H)]
   const seg = (c: Cam, l: [[number, number], [number, number]] | null): [V3, V3] | null => (l ? [imgToWorld(c, ...l[0]), imgToWorld(c, ...l[1])] : null)
@@ -114,7 +117,7 @@ export function EpipolarAnimation() {
     O1: c1.O,
     O2: c2.O,
     P,
-    rayEnd: Pat(TMAX + 0.4),
+    rayEnd: Pat(TMAX + 0.6),
     p1: imgToWorld(c1, P1[0], P1[1]),
     p2: p2.z > 0 && inside(p2.x, p2.y) ? imgToWorld(c2, p2.x, p2.y) : null,
     e1: e1 && inside(e1.x, e1.y) ? imgToWorld(c1, e1.x, e1.y) : null,
@@ -179,6 +182,13 @@ export function EpipolarAnimation() {
 
   return (
     <div className="probe">
+      <ul className="epi-key">
+        <li><i className="k-cam" /> <b>O1, O2</b>: the two cameras. Grey lines show what each camera sees.</li>
+        <li><i className="k-img" /> <b>Grey rectangles</b>: each camera's photo, floating in front of it.</li>
+        <li><i className="k-ray" /> <b>Red ray</b>: everything camera 1 sees at pixel p1. P is somewhere on it.</li>
+        <li><i className="k-pt" /> <b>P</b>: the real 3D point. It slides along the ray, because one photo can't tell its depth.</li>
+        <li><i className="k-line" /> <b>Bold red line on photo 2</b>: where camera 2 sees P for each depth. That's the epipolar line.</li>
+      </ul>
       <div className="epi-controls">
         <div className="segmented" role="tablist" aria-label="Camera setup">
           <button role="tab" aria-selected={turned} className={turned ? 'on' : ''} onClick={() => setTurned(true)}>Cameras turned</button>

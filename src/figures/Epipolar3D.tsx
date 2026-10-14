@@ -70,14 +70,18 @@ export default function Epipolar3D(input: Epipolar3DProps) {
     trace: ms(input.trace),
   }
   return (
-    <Canvas camera={{ position: [1.6, 4.6, -5.4], fov: 40 }} dpr={[1, 2]}>
-      <OrbitControls target={[0, 1.1, 2.6]} enablePan={false} minDistance={4} maxDistance={14} />
+    <Canvas camera={{ position: [0.4, 4.4, -3.6], fov: 45 }} dpr={[1, 2]}>
+      <OrbitControls target={[0, 0.2, 1.7]} enablePan={false} minDistance={4} maxDistance={14} />
 
       {/* image planes */}
       <Poly pts={p.plane1} color="#e5e5ea" opacity={0.55} />
       <Poly pts={p.plane2} color="#e5e5ea" opacity={0.55} />
       <Line points={[...p.plane1, p.plane1[0]]} color="#8e8e93" lineWidth={1.2} />
       <Line points={[...p.plane2, p.plane2[0]]} color="#8e8e93" lineWidth={1.2} />
+      {/* camera outlines: pinhole to the photo's corners */}
+      {[...p.plane1.map((c) => [p.O1, c]), ...p.plane2.map((c) => [p.O2, c])].map((seg, i) => (
+        <Line key={i} points={seg as [V3, V3]} color="#aeaeb2" lineWidth={1} />
+      ))}
       {/* epipolar plane */}
       <Poly pts={[p.O1, p.P, p.O2]} color="#ffcc00" opacity={0.32} />
       {/* baseline */}

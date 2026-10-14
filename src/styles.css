@@ -306,3 +306,11 @@ text.fill-blue { fill: var(--blue); }
 .epi-3d-loading { display: grid; place-items: center; height: 100%; color: var(--label-2); font-size: 14px; }
 .epi-3d-hint { position: absolute; left: 10px; bottom: 8px; font-size: 12px; color: var(--label-2); pointer-events: none; }
 .l3d { display: inline-block; font: 600 13px var(--font); color: var(--label); white-space: nowrap; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff; }
+.epi-key { list-style: none; margin: 0; padding: 10px 12px; background: var(--card); border-radius: 10px; display: grid; gap: 4px; font-size: 14px; }
+.epi-key li { display: flex; align-items: baseline; gap: 8px; }
+.epi-key i { flex: none; display: inline-block; width: 14px; height: 10px; border-radius: 3px; transform: translateY(1px); }
+.k-cam { background: #1c1c1e; border-radius: 50% !important; width: 10px !important; }
+.k-img { background: #e5e5ea; border: 1px solid #8e8e93; }
+.k-ray { background: #ff3b30; height: 3px !important; }
+.k-pt { background: #5ac8fa; border-radius: 50% !important; width: 10px !important; }
+.k-line { background: #ff3b30; height: 5px !important; }
