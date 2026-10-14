@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { CameraControls, Html, Line } from '@react-three/drei'
+import { CameraControls, Grid, Html, Line } from '@react-three/drei'
 import * as THREE from 'three'
 import {
   STEPS, cam1, cam2, ghosts, ghostsOnPhoto2, lerp3, line2, p1, p2, photo1, photo2, P, ramp, ray1, ray2Far, rayFar, sheet, sheetSeed,
@@ -112,6 +112,20 @@ export default function EpiStory3D({ t, step }: { t: number; step: number }) {
 
   return (
     <Canvas camera={{ position: STEPS[0].view.pos, fov: 42 }} dpr={[1, 2]}>
+      {/* ground: a soft grid under the cameras that fades into the distance */}
+      <Grid
+        position={[0, -1.1, 3]}
+        args={[40, 40]}
+        cellSize={0.5}
+        cellThickness={0.6}
+        cellColor="#c7c7cc"
+        sectionSize={2.5}
+        sectionThickness={1}
+        sectionColor="#aeaeb2"
+        fadeDistance={22}
+        fadeStrength={1.6}
+        infiniteGrid
+      />
       <ViewDirector step={step} />
       <Camera O={cam1.O} photo={photo1} opacity={camOp} label="O1 · camera 1" highlight={hl} />
       <Camera O={cam2.O} photo={photo2} opacity={camOp} label="O2 · camera 2" highlight={hl} glow={glow} />

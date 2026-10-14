@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { Html, Line, OrbitControls } from '@react-three/drei'
+import { Grid, Html, Line, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 
 export type V3 = [number, number, number]
@@ -71,6 +71,20 @@ export default function Epipolar3D(input: Epipolar3DProps) {
   }
   return (
     <Canvas camera={{ position: [0.4, 4.4, -3.6], fov: 45 }} dpr={[1, 2]}>
+      {/* ground: a soft grid under the cameras that fades into the distance */}
+      <Grid
+        position={[0, -1.1, 3]}
+        args={[40, 40]}
+        cellSize={0.5}
+        cellThickness={0.6}
+        cellColor="#c7c7cc"
+        sectionSize={2.5}
+        sectionThickness={1}
+        sectionColor="#aeaeb2"
+        fadeDistance={22}
+        fadeStrength={1.6}
+        infiniteGrid
+      />
       <OrbitControls target={[0, 0.2, 1.7]} enablePan={false} minDistance={4} maxDistance={14} />
 
       {/* image planes */}

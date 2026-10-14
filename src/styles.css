@@ -349,3 +349,6 @@ text.fill-blue { fill: var(--blue); }
   .story-stage { aspect-ratio: 3 / 4; }
   .story-caption { font-size: 14px; }
 }
+
+/* 3D backdrop: soft sky fading to a pale floor */
+.story-stage, .epi-3d { background: linear-gradient(180deg, #eaf2fd 0%, #f6f8fc 55%, #eceef3 100%); }
