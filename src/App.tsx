@@ -87,7 +87,9 @@ function NotePage() {
 export default function App() {
   const { pathname } = useLocation()
   const activeSlug = pathname.slice(1) || undefined
-  useEffect(() => window.scrollTo(0, 0), [pathname])
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
   const current = notes.find((n) => n.slug === activeSlug)
   useEffect(() => {
     document.title = current ? `${current.title} · Study Notes` : 'Study Notes'
