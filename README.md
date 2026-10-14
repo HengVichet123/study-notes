@@ -33,6 +33,11 @@ Live: https://hengvichet123.github.io/study-notes/
 - `<QAList>` + `<QA q="...">` tap-to-open questions
 - Figures in `src/figures/` (add a new `.tsx` there and export it from `src/figures/index.ts`)
 
+## Animation tools
+
+- **3D scenes:** three.js + react-three-fiber + drei (`src/figures/Epipolar3D.tsx` is the example). Load them with `React.lazy`, so only the page that uses 3D downloads it.
+- **2D figures:** plain SVG in React (see `src/figures/`). Animate with `requestAnimationFrame` and state; respect `prefers-reduced-motion`.
+
 ## Run locally
 
 ```sh

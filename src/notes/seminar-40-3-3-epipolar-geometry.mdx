@@ -1,0 +1,145 @@
+---
+title: Epipolar geometry and how to find the line
+course: M1 Seminar · Computer Vision
+section: 40.3.3
+chapter: 40 · Stereo vision
+date: 2026-10-14
+summary: Why the match of a pixel must lie on one line in the other image, and how to find that line.
+---
+
+## The problem
+
+We have two photos of the same scene from two cameras. For a pixel $p_1$ in the left image, we want the **same 3D point** in the right image, $p_2$.
+
+Searching the whole right image would be slow, and many places would look similar, so we would get many wrong matches.
+
+<Goal>
+Use the camera setup to shrink the search: from the whole right image down to **one line**.
+</Goal>
+
+## The idea
+
+One pixel does **not** tell you how far away the point is. The real point $P$ could be anywhere on the ray that starts at camera 1 and passes through $p_1$: near, middle or far. Camera 1 sees all of them at the same pixel.
+
+Camera 2 stands somewhere else, so it sees that ray from the side. A ray seen from the side looks like a **line**. So wherever $P$ is on the ray, camera 2 sees it somewhere on that line. That line is the **epipolar line**.
+
+Watch it happen. $P$ slides along the red ray. In the left image $p_1$ never moves. In the right image $p_2$ moves, and its path is the epipolar line.
+
+<Figure caption="Real projections of a 3D scene. Camera 1 always sees P at p1. Camera 2 sees it at p2, which slides along one line as P moves along the ray. The yellow triangle is the epipolar plane. Switch to Parallel to see the line become a horizontal row.">
+  <EpipolarAnimation />
+</Figure>
+
+## The words
+
+- **Camera centres** $O_1$, $O_2$: where each camera is (its pinhole).
+- **Baseline**: the line between the two camera centres, the dashed line. Its length $B$ is how far apart the cameras are (your eyes: about 6.5 cm). It is a line in 3D space, **not** in the images.
+- **Epipolar plane**: the plane through $O_1$, $O_2$ and $P$ (yellow). Every 3D point gives its own plane, and all of them contain the baseline.
+- **Epipolar line**: where the epipolar plane cuts an image. The match $p_2$ must lie on it.
+- **Epipoles** $e_1$, $e_2$: where the baseline crosses each image plane. $e_1$ is where camera 1 sees camera 2's centre; $e_2$ is where camera 2 sees camera 1's centre.
+
+Because every epipolar plane contains the baseline, **every epipolar line in an image passes through that image's epipole**, like spokes of a wheel.
+
+The baseline only crosses an image plane if the cameras are turned toward each other. If they turn only a little, the epipole is still there, but outside the photo (the image plane is infinite; the photo is a small rectangle of it). In parallel stereo the baseline never crosses the image planes, so the epipoles are **at infinity**.
+
+## What we know and what we don't
+
+- **The line is known in advance.** It depends only on how the cameras are placed, not on what is in the picture.
+- **The position on the line is unknown.** Moving along the line means a different depth. That position is the **disparity**, and finding it is the job of matching (Harris, SIFT, SGM).
+
+## How to find the line
+
+### Way 1: project two points of the ray
+
+1. Take two 3D points on the ray through $p_1$, for example at depth 1 m and 10 m.
+2. Project both into camera 2 with its projection matrix (Ch. 39: $\mathbf p = K[R \mid \mathbf t]\mathbf P$).
+3. Draw the line through the two pixels you get.
+
+This is exactly what the animation does.
+
+### Way 2: the fundamental matrix
+
+Write the pixel in homogeneous coordinates $\mathbf x_1 = (x, y, 1)^\top$. Then
+
+<KeyEq name="Epipolar line from the fundamental matrix">
+$$
+\mathbf l_2 = F\,\mathbf x_1, \qquad \mathbf l_2 = (a, b, c)^\top \;\text{ means the line }\; a x' + b y' + c = 0
+$$
+</KeyEq>
+
+$F$ is a 3×3 matrix that stores everything about how the two cameras are placed. Every correct match satisfies the **epipolar constraint**:
+
+<KeyEq name="Epipolar constraint">
+$$
+\mathbf x_2^\top F\,\mathbf x_1 = 0
+$$
+</KeyEq>
+
+Where $F$ comes from:
+
+- **Calibrated cameras** (you know $K_1, K_2$ and the relative pose $R, \mathbf t$): $E = [\mathbf t]_\times R$ (the essential matrix, geometry only), then $F = K_2^{-\top} E\, K_1^{-1}$ (adds pixel units).
+- **Uncalibrated:** find at least 8 reliable matches (for example SIFT) and solve $\mathbf x_2^\top F \mathbf x_1 = 0$ for $F$ (the 8-point algorithm, with RANSAC to throw out bad matches). Section 40.3.4.2.
+
+### Example: parallel stereo
+
+No rotation ($R = I$), camera 2 moved sideways, and $K = I$ to keep it simple:
+
+$$
+F = \begin{bmatrix} 0 & 0 & 0 \\ 0 & 0 & -1 \\ 0 & 1 & 0 \end{bmatrix},\qquad
+F \begin{bmatrix} x \\ y \\ 1 \end{bmatrix} = \begin{bmatrix} 0 \\ -1 \\ y \end{bmatrix}
+\;\Rightarrow\; -y' + y = 0 \;\Rightarrow\; y' = y
+$$
+
+The match is on **the same row**. The rule we use for parallel stereo comes straight out of the formula.
+
+## How to find the epipoles
+
+- **Project the other camera:** $e_1$ is camera 2's centre projected into camera 1, and $e_2$ is camera 1's centre projected into camera 2.
+- **Intersect two epipolar lines:** all lines pass through the epipole, so two of them cross there.
+- **From $F$:** $F\,\mathbf e_1 = 0$ and $F^\top \mathbf e_2 = 0$. Compute with the SVD of $F$ (Sec. 40.3.4.3). If the third coordinate is 0, the epipole is at infinity.
+
+In the parallel example, $F\,(1, 0, 0)^\top = 0$, so $\mathbf e_1 = (1, 0, 0)^\top$: third coordinate 0, a point at infinity in the horizontal direction. All epipolar lines are horizontal.
+
+## Parallel stereo (平行ステレオ) and rectification (平行化)
+
+In **parallel stereo**, both cameras look straight ahead in the same direction and are moved only sideways:
+
+- the baseline is parallel to the images, so the epipoles are at infinity,
+- every epipolar line is a horizontal row, the same row in both images,
+- matching is a 1D search along the row, and depth is $Z = fB/d$.
+
+Real cameras are always turned a little. **Rectification** (40.3.5) warps both images so they look as if they came from parallel cameras. After that, the matching pages ([Harris](#/seminar-40-3-2-1-harris), [SIFT](#/seminar-40-3-2-2-local-descriptors), [SGM](#/seminar-40-3-2-3-bp-sgm)) all apply.
+
+## In practice (OpenCV)
+
+- `cv2.findFundamentalMat(pts1, pts2, cv2.FM_RANSAC)` estimates $F$ from matches.
+- `cv2.computeCorrespondEpilines(pts, 1, F)` gives the epipolar line for each point.
+- `cv2.stereoRectify(...)` and `cv2.initUndistortRectifyMap(...)` rectify, so lines become rows.
+
+<SayIt>
+A pixel in the left image fixes a ray, not a point, because its depth is unknown. Seen from the second camera that ray is a line, the epipolar line, so the match must lie on it. It is the intersection of the epipolar plane, through both camera centres and the 3D point, with the image. We compute it as l₂ = F x₁ from the fundamental matrix, and every match satisfies x₂ᵀ F x₁ = 0. All epipolar lines pass through the epipole, the image of the other camera centre. In parallel stereo the epipoles are at infinity and the lines are horizontal rows.
+</SayIt>
+
+## Questions from the seminar (2026-10-14)
+
+<QAList>
+<QA q="So we already know the match must be on that line?">
+Yes. The line comes from the camera setup only, so it is known before matching. What we don't know is where on the line the match is. That position is the disparity, and it gives the depth.
+</QA>
+<QA q="How do we know where the line is?">
+Project two points of the ray into the other camera and connect them, or compute l₂ = F x₁. In parallel stereo it is just the same row.
+</QA>
+<QA q="What is the baseline?">
+The line between the two camera centres. Its length B is how far apart the cameras are.
+</QA>
+<QA q="Does the baseline have to be in the image plane?">
+No. It is a line in 3D space. If the cameras are turned toward each other, it pokes through each image plane at one point, the epipole. In parallel stereo it is parallel to the images and never crosses them.
+</QA>
+<QA q="What are e1 and e2?">
+The epipoles. e1 is where camera 1 sees camera 2's centre, and e2 is where camera 2 sees camera 1's centre. Every epipolar line in an image passes through its epipole.
+</QA>
+<QA q="How do we find e1 and e2?">
+Project the other camera's centre into the image, intersect two epipolar lines, or solve F e₁ = 0 and Fᵀ e₂ = 0 with the SVD.
+</QA>
+</QAList>
+
+**References.** R. Hartley, A. Zisserman, *Multiple View Geometry in Computer Vision*, Ch. 9. A. Torralba, P. Isola, W. T. Freeman, *Foundations of Computer Vision*, Sec. 40.3.3–40.3.5, [visionbook.mit.edu](https://visionbook.mit.edu/3d_scene_understanding_stereo.html).
