@@ -1,0 +1,109 @@
+---
+title: Local image descriptors (SIFT)
+course: M1 Seminar · Computer Vision
+section: 40.3.2.2
+chapter: 40 · Stereo vision
+date: 2026-10-14
+summary: How to describe the area around a corner so the same point can be found in the other image.
+---
+
+## The problem
+
+Harris (40.3.2.1) tells us **where** the good points are, in each image separately. Now we must say **which corner in the left image is which corner in the right image**.
+
+<Goal>
+Give each corner a description of its neighbourhood, so that the same scene point gets nearly the same description in both images, and different points get different ones.
+</Goal>
+
+The obvious description is the raw pixels of the patch, compared with SSD like in Eq. 40.2. That breaks easily, because the two cameras rarely see exactly the same brightness:
+
+- one image is a bit brighter or has more contrast (exposure, angle to a light, a shiny surface),
+- the point is a pixel or two off from where we cut the patch.
+
+Either one changes every pixel value, so SSD says "different" even when it is the same point.
+
+## The idea
+
+Describe the patch by its **edge directions**, not its brightness values.
+
+- If the lighting changes as $a\,\ell + c$, the gradient becomes $a\,\nabla \ell$. Its length changes but its **direction does not**.
+- If you count directions over a small area (a histogram), moving the patch by a pixel barely changes the counts.
+
+The book's Fig. 40.9a shows exactly this: two photos of a hand under different light look very different as pixels, but almost the same as a map of local orientations.
+
+## How a SIFT descriptor is built
+
+The book only gives the idea ("histograms of oriented filter responses"). The numbers below are the standard SIFT recipe from Lowe (2004), which the book cites.
+
+1. Take a 16×16 patch around the keypoint.
+2. Compute the gradient $(I_x, I_y)$ at every pixel. Its direction is $\theta = \operatorname{atan2}(I_y, I_x)$ and its strength is $m = \sqrt{I_x^2 + I_y^2}$.
+3. Split the patch into a 4×4 grid of cells (each 4×4 pixels).
+4. In each cell, make a histogram of directions with 8 bins (every 45°). Each pixel adds its strength $m$ to the bin of its direction.
+5. Put all the histograms in one list: $4 \times 4 \times 8 = 128$ numbers.
+6. Normalise the list to length 1. Lowe then clips values above 0.2 and normalises again, so one very strong edge cannot dominate.
+
+<KeyEq name="SIFT descriptor size">
+$$
+\underbrace{4 \times 4}_{\text{cells}} \times \underbrace{8}_{\text{directions}} = 128 \text{ numbers},\qquad \mathbf f = \frac{\mathbf h}{\|\mathbf h\|}
+$$
+</KeyEq>
+
+<Figure caption="A 16×16 patch of a bright disk, split into 4×4 cells (left). Each cell becomes an 8-direction histogram (right). Arrow length is the total gradient strength in that direction. Cells on the disk edge point outward from the centre; flat cells are empty.">
+  <DescriptorGrid />
+</Figure>
+
+### Why each step is there
+
+- **Gradients, not pixels:** removes the brightness offset $c$ (a derivative of a constant is 0).
+- **Normalising to length 1:** removes the contrast factor $a$ (it scales every number by the same amount).
+- **Histograms over cells:** a pixel moving inside its cell still lands in the same histogram, so small shifts don't matter.
+- **4×4 grid, not one big histogram:** keeps *where* each direction is. One histogram for the whole patch would not tell a disk from a ring.
+
+Full SIFT also rotates the patch to its main gradient direction before step 3 (rotation invariance), and picks the patch size from the scale where the keypoint was found (scale invariance, using the Laplacian across scales, mentioned at the end of 40.3.2.1).
+
+## Try it: lighting change
+
+<Figure caption="The right patch is the same disk under different lighting (brightness × a + 30). The pixel SSD changes a lot as you move the slider. The descriptor distance stays at 0, because gradient directions do not change and normalising removes the factor a.">
+  <LightingCompare />
+</Figure>
+
+## How matching works
+
+For a corner in the left image with descriptor $\mathbf f$, compare it with every candidate descriptor $\mathbf g$ in the right image (after rectification, only on the same row):
+
+$$
+d(\mathbf f, \mathbf g) = \|\mathbf f - \mathbf g\| = \sqrt{\sum_{i=1}^{128} (f_i - g_i)^2}
+$$
+
+The smallest distance is the match. Lowe's **ratio test** throws out unsure matches: keep the match only if
+
+$$
+\frac{d_{\text{best}}}{d_{\text{second best}}} < 0.8
+$$
+
+If the best and second-best candidates are almost equally good, the point is ambiguous (repeated texture), so it is better to drop it. This is the same "no other nearby position looks like it" idea as Harris, now applied across the two images.
+
+## What it gives us
+
+A set of reliable matches between corners in the left and right images. Each match gives a disparity $d$ and so a depth $Z = fB/d$. These matches are sparse, so 40.3.2.3 fills in the depth everywhere else (belief propagation, semi-global matching).
+
+<SayIt>
+Harris finds where to match; the descriptor says what the neighbourhood looks like. SIFT uses histograms of gradient orientations in a 4×4 grid with 8 bins, 128 numbers, normalised. Directions don't change with lighting, normalising removes contrast, and histograms tolerate small shifts, so the same point gets the same descriptor in both images.
+</SayIt>
+
+<QAList>
+<QA q="Is a descriptor the same as a feature?">
+People mix the words. Strictly, the **keypoint** (or feature point) is the location found by Harris or SIFT's detector. The **descriptor** is the 128 numbers describing the area around it. SIFT is both a detector and a descriptor.
+</QA>
+<QA q="Why not just use SSD on pixels like Eq. 40.2?">
+SSD on pixels changes when the lighting changes, even for the same point. Gradient directions don't, and normalising removes contrast. See the slider above.
+</QA>
+<QA q="Why 8 bins and a 4×4 grid?">
+Lowe tested the options and found this a good balance: fewer bins lose detail, more bins and cells make the descriptor sensitive to small shifts and noise.
+</QA>
+<QA q="What does 'histogram' mean here?">
+Counting, but weighted. For each of 8 directions, add up the gradient strength of all pixels in the cell that point that way.
+</QA>
+</QAList>
+
+**References.** D. G. Lowe, "Distinctive Image Features from Scale-Invariant Keypoints", IJCV 2004. W. T. Freeman et al., 1998 (the book’s Freeman98c, source of Fig. 40.9a). A. Torralba, P. Isola, W. T. Freeman, *Foundations of Computer Vision*, Sec. 40.3.2.2, Fig. 40.9, [visionbook.mit.edu](https://visionbook.mit.edu/3d_scene_understanding_stereo.html).
