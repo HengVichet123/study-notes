@@ -23,6 +23,14 @@ One pixel does **not** tell you how far away the point is. The real point $P$ co
 
 Camera 2 stands somewhere else, so it sees that ray from the side. A ray seen from the side looks like a **line**. So wherever $P$ is on the ray, camera 2 sees it somewhere on that line. That line is the **epipolar line**.
 
+### The whole idea in one animation
+
+<Figure caption="Step by step: from two cameras to the epipolar line, the search, and the depth. Use ‹ › to move between steps, or click a step name.">
+  <EpipolarStory />
+</Figure>
+
+### Explore it yourself
+
 Watch it happen. $P$ slides along the red ray. In the left image $p_1$ never moves. In the right image $p_2$ moves, and its path is the epipolar line.
 
 <Figure caption="Real projections of a 3D scene. Camera 1 always sees P at p1. Camera 2 sees it at p2, which slides along one line as P moves along the ray. The yellow triangle is the epipolar plane. Switch to Parallel to see the line become a horizontal row.">

@@ -314,3 +314,38 @@ text.fill-blue { fill: var(--blue); }
 .k-ray { background: #ff3b30; height: 3px !important; }
 .k-pt { background: #5ac8fa; border-radius: 50% !important; width: 10px !important; }
 .k-line { background: #ff3b30; height: 5px !important; }
+
+/* story player (step-by-step animation) */
+.story { display: flex; flex-direction: column; gap: 10px; }
+.story-stage { position: relative; width: 100%; aspect-ratio: 16 / 10; max-height: 560px; background: var(--card); border-radius: 12px; overflow: hidden; }
+.story-stage canvas { touch-action: none; }
+.story-caption { padding: 10px 14px; border-radius: 12px; background: var(--card); font-size: 15px; line-height: 1.4; min-height: 3.2em; }
+.story-num { font-size: 12px; font-weight: 600; color: var(--label-2); margin-right: 6px; font-variant-numeric: tabular-nums; }
+.story-overlay { position: absolute; inset: 0; z-index: 50; background: rgba(242, 242, 247, 0.97); display: flex; align-items: center; justify-content: center; padding: 14px; }
+.story-2d { width: 100%; max-width: 620px; display: flex; flex-direction: column; gap: 10px; }
+.story-2d-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.story-2d figure { margin: 0; background: var(--card); border-radius: 10px; padding: 8px 10px; min-width: 0; }
+.story-2d figcaption { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+.story-2d svg { width: 100%; height: auto; display: block; font-family: var(--font); }
+.story-photo { fill: #f2f2f7; stroke: var(--label-3); }
+.story-patch { fill: none; stroke-width: 2.5; }
+.story-patch.blue { stroke: #007aff; } .story-patch.orange { stroke: #ff9500; } .story-patch.green { stroke: #34c759; }
+.story-graph { background: var(--card); border-radius: 10px; padding: 8px 10px; }
+.story-graph svg { width: 100%; height: 70px; display: block; }
+.story-graph-title { font-size: 12px; font-weight: 600; margin-bottom: 2px; }
+.story-graph-axis { display: flex; justify-content: space-between; font-size: 11px; color: var(--label-2); }
+.story-bar { display: flex; align-items: center; gap: 8px; }
+.story-btn { border: 0; border-radius: 9px; min-width: 40px; height: 36px; padding: 0 12px; font: 600 16px var(--font); background: var(--fill); color: var(--label); cursor: pointer; }
+.story-btn:disabled { opacity: 0.35; cursor: default; }
+.story-btn.primary { background: var(--blue); color: #fff; font-size: 14px; min-width: 76px; }
+.story-progress { flex: 1; height: 4px; border-radius: 2px; background: var(--fill); overflow: hidden; }
+.story-progress div { height: 100%; background: var(--blue); }
+.story-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.story-steps button { border: 0; border-radius: 999px; padding: 5px 11px; font: 500 13px var(--font); background: var(--fill); color: var(--label-2); cursor: pointer; }
+.story-steps button.done { color: var(--label); }
+.story-steps button.on { background: var(--blue); color: #fff; }
+.l3d-red { color: #d70015; } .l3d-green { color: #1f8a3b; } .l3d-blue { color: #0062cc; }
+@media (max-width: 600px) {
+  .story-stage { aspect-ratio: 3 / 4; }
+  .story-caption { font-size: 14px; }
+}

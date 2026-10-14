@@ -1,0 +1,155 @@
+import { useEffect, useMemo, useRef } from 'react'
+import { Canvas } from '@react-three/fiber'
+import { CameraControls, Html, Line } from '@react-three/drei'
+import * as THREE from 'three'
+import {
+  STEPS, cam1, cam2, ghosts, lerp3, line2, p1, p2, photo1, photo2, P, ramp, ray1, ray2Far, rayFar, sheet, sheetSeed,
+  type V3,
+} from './epiStory'
+
+const RED = '#ff3b30'
+const BLUE = '#007aff'
+const GREEN = '#34c759'
+const INK = '#1c1c1e'
+
+function Poly({ pts, color, opacity }: { pts: V3[]; color: string; opacity: number }) {
+  const geom = useMemo(() => {
+    const g = new THREE.BufferGeometry()
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pts.flat(), 3))
+    g.setIndex(pts.length === 3 ? [0, 1, 2] : [0, 1, 2, 0, 2, 3])
+    return g
+  }, [pts])
+  if (opacity <= 0.001) return null
+  return (
+    <mesh geometry={geom}>
+      <meshBasicMaterial color={color} transparent opacity={opacity} side={THREE.DoubleSide} depthWrite={false} />
+    </mesh>
+  )
+}
+
+function Seg({ a, b, k = 1, color, width = 2, opacity = 1, dashed = false }: { a: V3; b: V3; k?: number; color: string; width?: number; opacity?: number; dashed?: boolean }) {
+  if (k <= 0.001 || opacity <= 0.001) return null
+  return (
+    <Line points={[a, lerp3(a, b, k)]} color={color} lineWidth={width} transparent opacity={opacity} dashed={dashed} dashSize={0.12} gapSize={0.08} />
+  )
+}
+
+function Dot({ at, color, r = 0.06, opacity = 1, scale = 1 }: { at: V3; color: string; r?: number; opacity?: number; scale?: number }) {
+  if (opacity <= 0.001) return null
+  return (
+    <mesh position={at} scale={scale}>
+      <sphereGeometry args={[r, 24, 24]} />
+      <meshBasicMaterial color={color} transparent opacity={opacity} />
+    </mesh>
+  )
+}
+
+function Label({ at, text, opacity, dy = -18, tone }: { at: V3; text: string; opacity: number; dy?: number; tone?: 'red' | 'green' | 'blue' }) {
+  if (opacity <= 0.01) return null
+  return (
+    <Html position={at} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
+      <span className={'l3d' + (tone ? ` l3d-${tone}` : '')} style={{ opacity, transform: `translateY(${dy}px)` }}>{text}</span>
+    </Html>
+  )
+}
+
+function Camera({ O, photo, opacity, label, highlight }: { O: V3; photo: V3[]; opacity: number; label: string; highlight: number }) {
+  return (
+    <group>
+      <Poly pts={photo} color="#e5e5ea" opacity={0.75 * opacity} />
+      <Line points={[...photo, photo[0]]} color="#8e8e93" lineWidth={1.3} transparent opacity={opacity} />
+      {photo.map((c, i) => (
+        <Line key={i} points={[O, c]} color="#aeaeb2" lineWidth={1} transparent opacity={opacity} />
+      ))}
+      <Dot at={O} color={INK} r={0.09} opacity={opacity} scale={1 + 0.6 * highlight} />
+      <Label at={O} text={label} opacity={opacity} dy={22} />
+    </group>
+  )
+}
+
+/** Moves the view smoothly to each step's viewpoint. */
+function ViewDirector({ step }: { step: number }) {
+  const ref = useRef<CameraControls>(null)
+  useEffect(() => {
+    const v = STEPS[step].view
+    ref.current?.setLookAt(...v.pos, ...v.target, true)
+  }, [step])
+  return <CameraControls ref={ref} smoothTime={0.9} minDistance={2.5} maxDistance={16} />
+}
+
+export default function EpiStory3D({ t, step }: { t: number; step: number }) {
+  const s0 = STEPS[0].start
+  const [, s1, s2, s3, s4, s5, s6] = STEPS.map((s) => s.start)
+
+  // step 1: cameras, then P
+  const camOp = ramp(t, s0 + 0.2, 0.9)
+  const pOp = ramp(t, s0 + 1.6)
+  // step 2: light from P to camera 1, then p1
+  const lightK = ramp(t, s1 + 0.4, 1.6)
+  const p1Op = ramp(t, s1 + 2.1, 0.4)
+  // step 3: P becomes unknown, the full ray and the "?" candidates
+  const pGhost = ramp(t, s2 + 0.2, 0.8)
+  const rayK = ramp(t, s2 + 0.6, 1.4)
+  const ghostOp = (i: number) => ramp(t, s2 + 1.8 + i * 0.25, 0.4) * (1 - ramp(t, s4 + 2.3, 0.8))
+  // step 4: highlight the three known points, baseline, plane
+  const hl = ramp(t, s3 + 0.2, 0.4) * (1 - ramp(t, s3 + 1.6, 0.6))
+  const baseK = ramp(t, s3 + 0.6, 1.0)
+  const seedOp = ramp(t, s3 + 1.6, 0.6) * (1 - ramp(t, s3 + 3, 0.8))
+  const sheetOp = ramp(t, s3 + 2.6, 1.2) * (1 - 0.8 * ramp(t, s4 + 2.3, 1))
+  // step 5: epipolar line on photo 2
+  const lineK = ramp(t, s4 + 0.5, 1.5)
+  // step 6: matching → p2 appears
+  const p2Op = ramp(t, s5 + 5.3, 0.4)
+  // step 7: second ray, P found
+  const ray2K = ramp(t, s6 + 0.5, 1.5)
+  const pFound = ramp(t, s6 + 2.1, 0.5)
+
+  const pSolid = pOp * (1 - pGhost) + pFound
+  const rayFarOp = 1 - 0.55 * ramp(t, s4 + 2.3, 1)
+
+  return (
+    <Canvas camera={{ position: STEPS[0].view.pos, fov: 42 }} dpr={[1, 2]}>
+      <ViewDirector step={step} />
+      <Camera O={cam1.O} photo={photo1} opacity={camOp} label="O1 · camera 1" highlight={hl} />
+      <Camera O={cam2.O} photo={photo2} opacity={camOp} label="O2 · camera 2" highlight={hl} />
+
+      {/* the epipolar plane: grows out of the triangle O1–p1–O2 */}
+      <Poly pts={sheetSeed} color="#ffcc00" opacity={0.55 * seedOp} />
+      <Poly pts={sheet} color="#ffcc00" opacity={0.3 * sheetOp} />
+      <Label at={lerp3(sheet[2], sheet[3], 0.5)} text="epipolar plane" opacity={sheetOp * (1 - ramp(t, s4 + 2.3))} dy={-6} />
+
+      {/* baseline */}
+      <Seg a={cam1.O} b={cam2.O} k={baseK} color={INK} width={1.8} dashed />
+      <Label at={lerp3(cam1.O, cam2.O, 0.5)} text="baseline" opacity={baseK * (1 - ramp(t, s5))} dy={16} />
+
+      {/* light from P to camera 1 (step 2), replaced by the full ray (step 3) */}
+      <Seg a={P} b={cam1.O} k={lightK} color={RED} width={2.5} opacity={1 - rayK} />
+      <Seg a={cam1.O} b={rayFar} k={rayK} color={RED} width={3} opacity={rayFarOp} />
+      <Label at={ray1(7)} text="ray through p1" opacity={rayK * (1 - ramp(t, s3))} dy={-6} tone="red" />
+
+      {/* candidates for P along the ray */}
+      {ghosts.map((g, i) => (
+        <group key={i}>
+          <Dot at={g} color="#5ac8fa" r={0.08} opacity={0.55 * ghostOp(i)} />
+          <Label at={g} text="?" opacity={ghostOp(i)} dy={-16} />
+        </group>
+      ))}
+
+      {/* the epipolar line on photo 2 */}
+      <Seg a={line2[0]} b={line2[1]} k={lineK} color={RED} width={4} />
+      <Label at={line2[1]} text="epipolar line" opacity={lineK * (1 - ramp(t, s6))} dy={-14} tone="red" />
+
+      {/* second ray: camera 2 through p2 */}
+      <Seg a={cam2.O} b={ray2Far} k={ray2K} color={GREEN} width={3} />
+
+      {/* points */}
+      <Dot at={P} color="#5ac8fa" r={0.11} opacity={Math.min(1, pSolid)} scale={1 + 0.5 * pFound * (1 - ramp(t, s6 + 2.8, 0.6))} />
+      <Dot at={P} color="#5ac8fa" r={0.11} opacity={0.25 * pGhost * (1 - pFound)} />
+      <Label at={P} text={pFound > 0.5 ? `P · depth found` : 'P'} opacity={Math.max(pOp * (1 - pGhost), pFound)} tone={pFound > 0.5 ? 'green' : undefined} />
+      <Dot at={p1} color={BLUE} r={0.055} opacity={p1Op} scale={1 + 0.8 * hl} />
+      <Label at={p1} text="p1" opacity={p1Op} tone="blue" />
+      <Dot at={p2} color={GREEN} r={0.055} opacity={p2Op} />
+      <Label at={p2} text="p2" opacity={p2Op} tone="green" />
+    </Canvas>
+  )
+}
