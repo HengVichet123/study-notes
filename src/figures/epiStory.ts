@@ -48,6 +48,11 @@ export const ray1 = (s: number) => add(cam1.O, mul(dir1, s))
 export const sP = len(sub(P, cam1.O)) / len(dir1)
 export const rayFar = ray1(8.5)
 export const ghosts = [1.9, 3.1, sP, 6.2, 7.6].map(ray1)
+// Where camera 2 sees each candidate: they all land on the epipolar line.
+export const ghostsOnPhoto2 = ghosts.map((g) => {
+  const q = project(cam2, g)
+  return { at: toWorld(cam2, q.x, q.y), inside: Math.abs(q.x) <= W && Math.abs(q.y) <= H }
+})
 
 // The ray from camera 2 through p2 (for the final step).
 export const dir2 = sub(p2, cam2.O)
@@ -126,7 +131,7 @@ export const STEPS: Step[] = [
   },
   {
     title: 'Depth unknown',
-    caption: 'But a photo has no depth. Camera 1 only knows p1, so P could be anywhere on this ray.',
+    caption: 'But a photo has no depth. Camera 1 only knows p1, so P could be at any of these “?” points: each one is a possible depth.',
     start: 9, end: 13.5,
     view: { pos: [7.4, 4.6, -2.4], target: [0, 0.7, 3.4] },
   },
@@ -138,20 +143,20 @@ export const STEPS: Step[] = [
   },
   {
     title: 'Epipolar line',
-    caption: 'The plane cuts photo 2 in a line: the epipolar line. The match p2 must be on it.',
-    start: 19.5, end: 24.5,
-    view: { pos: [-3.6, 1.4, -2.8], target: [-0.9, 0.2, 0.6] },
+    caption: 'Where the plane passes through photo 2, it leaves a line: the epipolar line. Camera 2 sees every “?” on that line, so p2 must be on it.',
+    start: 19.5, end: 27,
+    view: { pos: [-4.6, 2.6, -1.6], target: [-0.6, 0.4, 2.0] },
   },
   {
     title: 'Matching',
     caption: 'Slide along the line and compare each spot with the patch around p1. The most similar spot is p2.',
-    start: 24.5, end: 31.5,
+    start: 27, end: 34,
     view: { pos: [-3.6, 1.4, -2.8], target: [-0.9, 0.2, 0.6] },
   },
   {
     title: 'Depth found',
     caption: 'Now draw a ray from camera 2 through p2. Where the two rays meet is P, so we know its depth.',
-    start: 31.5, end: 37,
+    start: 34, end: 39.5,
     view: { pos: [3.4, 3.6, -5.0], target: [0, 0.4, 2.4] },
   },
 ]
