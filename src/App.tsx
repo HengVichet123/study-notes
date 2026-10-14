@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { MDXProvider } from '@mdx-js/react'
 import { courses, notes } from './notes'
@@ -84,7 +84,48 @@ function NotePage() {
   )
 }
 
+function SidebarIcon() {
+  return (
+    <svg viewBox="0 0 22 18" width="22" height="18" aria-hidden="true">
+      <rect x="1" y="1" width="20" height="16" rx="3.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      <line x1="8" y1="1.5" x2="8" y2="16.5" stroke="currentColor" strokeWidth="1.6" />
+      <line x1="3.6" y1="5" x2="5.6" y2="5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <line x1="3.6" y1="8" x2="5.6" y2="8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+const SIDEBAR_KEY = 'study-notes:sidebar-hidden'
+const readHidden = () => {
+  try {
+    return localStorage.getItem(SIDEBAR_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 export default function App() {
+  const [sidebarHidden, setSidebarHidden] = useState(readHidden)
+  const toggleSidebar = () => setSidebarHidden((h) => !h)
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_KEY, sidebarHidden ? '1' : '0')
+    } catch {
+      /* storage blocked: the toggle still works for this visit */
+    }
+  }, [sidebarHidden])
+  // Ctrl+Cmd+S toggles the sidebar, as in Mac apps.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === 's' && e.ctrlKey && e.metaKey) {
+        e.preventDefault()
+        toggleSidebar()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   const { pathname } = useLocation()
   const activeSlug = pathname.slice(1) || undefined
   useEffect(() => {
@@ -96,12 +137,25 @@ export default function App() {
   }, [current])
 
   return (
-    <div className={'shell' + (activeSlug ? ' has-note' : '')}>
-      <aside className="sidebar">
-        <Link to="/" className="sidebar-title">Study Notes</Link>
+    <div className={'shell' + (activeSlug ? ' has-note' : '') + (sidebarHidden ? ' sidebar-hidden' : '')}>
+      <aside className="sidebar" hidden={sidebarHidden}>
+        <div className="sidebar-head">
+          <Link to="/" className="sidebar-title">Study Notes</Link>
+          <button type="button" className="icon-btn" onClick={toggleSidebar} aria-label="Hide sidebar" title="Hide sidebar (⌃⌘S)">
+            <SidebarIcon />
+          </button>
+        </div>
         <NoteList activeSlug={activeSlug} />
       </aside>
       <div className="detail">
+        {sidebarHidden && (
+          <div className="desk-bar">
+            <button type="button" className="icon-btn" onClick={toggleSidebar} aria-label="Show sidebar" title="Show sidebar (⌃⌘S)">
+              <SidebarIcon />
+            </button>
+            <Link to="/" className="desk-bar-home">Study Notes</Link>
+          </div>
+        )}
         <div className="navbar">
           <Link to="/" className="back">
             <span className="back-chevron" aria-hidden="true" />
