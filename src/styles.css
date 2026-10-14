@@ -202,3 +202,38 @@ text.fill-orange { fill: #c46a00; } text.fill-green { fill: #1f8a3b; }
 .slider input { width: min(100%, 320px); accent-color: var(--blue); }
 
 [hidden] { display: none !important; }
+
+/* sobel probe */
+.sobel-img { width: min(100%, 280px); height: auto; border-radius: 8px; }
+.sobel-px { cursor: pointer; }
+.px-num { font-size: 8.5px; fill: rgba(255, 255, 255, 0.75); font-variant-numeric: tabular-nums; pointer-events: none; }
+.px-num.dark { fill: rgba(0, 0, 0, 0.55); }
+.sobel-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.sobel-k { background: var(--card); border-radius: 10px; padding: 10px 12px; }
+.sobel-k-title { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.mini-grid { border-collapse: separate; border-spacing: 3px; font: 600 13px var(--font); font-variant-numeric: tabular-nums; }
+.mini-grid td { width: 30px; height: 24px; text-align: center; border-radius: 5px; background: var(--fill); }
+.mini-grid td.pos { color: #1f8a3b; } .mini-grid td.neg { color: #c4291f; }
+.sobel-sum { font-size: 13px; color: var(--label-2); margin-top: 6px; font-variant-numeric: tabular-nums; max-width: 260px; }
+.sobel-sum strong { color: var(--label); }
+.desc-svg.wide { width: min(100%, 300px); }
+
+/* descriptor matching */
+.match { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.match-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.match-head { font-size: 13px; color: var(--label-2); font-weight: 600; }
+.match-card { display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: 10px; background: var(--card); border-radius: 10px; padding: 8px; border: 2px solid transparent; }
+.match-card.is-best { border-color: var(--green); }
+.match-thumb svg { width: 64px; display: block; }
+.bars { width: 100%; height: 34px; display: block; }
+.fill-indigo { fill: var(--indigo); }
+.match-d { display: flex; flex-direction: column; align-items: flex-end; font-size: 12px; color: var(--label-2); min-width: 56px; }
+.match-d strong { font-size: 17px; color: var(--label); font-variant-numeric: tabular-nums; }
+.match-d em { font-style: normal; color: #1f8a3b; font-weight: 600; }
+
+/* hog */
+.hog-svg { width: min(46%, 200px); height: auto; border-radius: 8px; }
+.hog-grid { stroke: rgba(0, 122, 255, 0.35); stroke-width: 1; }
+.hog-hist { background: var(--card); border-radius: 10px; padding: 10px 12px; }
+.hog-hist-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+text.fill-blue { fill: var(--blue); }

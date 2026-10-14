@@ -1,0 +1,85 @@
+---
+title: Image descriptors
+course: Image Processing Basics
+section: "2"
+date: 2026-10-14
+summary: A short list of numbers that describes what a small part of the image looks like, so the same spot can be recognised again.
+---
+
+## The problem
+
+Harris (or SIFT's detector) gives us good points in the left image and in the right image. But a point is just a position $(x, y)$. Positions alone cannot tell us **which left point is the same as which right point**, because the same object sits at different positions in the two images.
+
+<Goal>
+Give every point a "fingerprint" of its surroundings, so that the same spot gets nearly the same fingerprint in both images, and different spots get different fingerprints.
+</Goal>
+
+## The idea, without math
+
+Finding the same person in two photos: you don't compare the photos pixel by pixel (the lighting is different). You describe the person, *black hair, glasses, red shirt*, and look for someone with the same description in the other photo.
+
+An image descriptor is that description, written as **numbers**, for a small square around a point.
+
+## Keypoint vs descriptor
+
+- **Keypoint** = **where**. A position that is easy to find again, such as a corner. It is $(x, y)$, sometimes with a size (scale) and an angle.
+- **Descriptor** = **what it looks like**. A list of numbers (a vector) computed from the small square around the keypoint. For SIFT, 128 numbers.
+
+People often say "feature" for either one. "Keypoint descriptor" just means the descriptor of a keypoint.
+
+## What makes a good descriptor
+
+The two cameras never see a point exactly the same way. A good descriptor stays (almost) the same when:
+
+- **lighting changes**: brighter, darker, more contrast,
+- **the point is a pixel or two off**,
+- (for SIFT) **the patch is rotated or zoomed**.
+
+But it must still be **different for different places**. A descriptor that is the same for everything would never fail on lighting, and would also be useless.
+
+### Why raw pixels are a bad descriptor
+
+Using the pixel values of the patch as the descriptor (and SSD to compare) fails on the first point: if the right image is 20% darker, every number changes, and the same spot looks "different". Small shifts change every number too.
+
+### What works: edge directions
+
+The direction of the [gradient](#/basics-1-gradient-sobel) does not change when the lighting changes (a brighter image makes every arrow longer, not turned). Counting directions in small areas (a histogram) also ignores small shifts. That is the idea behind SIFT and [HOG](#/basics-3-hog).
+
+## How matching uses descriptors
+
+<KeyEq name="Descriptor distance">
+$$
+d(\mathbf f, \mathbf g) = \|\mathbf f - \mathbf g\| = \sqrt{\sum_i (f_i - g_i)^2}
+$$
+</KeyEq>
+
+1. Compute a descriptor $\mathbf f$ for every keypoint in the left image, and $\mathbf g$ for every keypoint in the right image.
+2. For each left keypoint, find the right keypoint with the **smallest distance**. That's the match.
+3. Reject unsure matches: keep it only if the best distance is clearly smaller than the second best (Lowe's ratio test, $d_1 / d_2 < 0.8$).
+
+<Figure caption="A disk on the left. On the right, three candidates under darker lighting. The bars are the 128 SIFT numbers of each patch. The disk's numbers are the same as the left disk's even though every pixel is darker, so its distance is 0 and it wins.">
+  <DescriptorMatch />
+</Figure>
+
+## Common descriptors
+
+- **SIFT** (2004): 4×4 cells × 8 direction bins = 128 numbers. Robust, the classic. See [40.3.2.2](#/seminar-40-3-2-2-local-descriptors).
+- **HOG** (2005): the same histogram idea over a whole window, used to classify objects (person or not). See [HOG](#/basics-3-hog).
+- **ORB, BRIEF** (2011): binary strings (0s and 1s) from brightness comparisons. Much faster, used in real-time SLAM (ORB-SLAM).
+- **Learned descriptors** (SuperPoint, DISK, CNN features): a network learns which numbers to output. Usually better than hand-made ones today.
+
+<SayIt>
+A keypoint tells us where a good point is; a descriptor is a vector that describes the patch around it, so we can find the same point in the other image by the nearest descriptor. A good descriptor is invariant to lighting and small shifts but still distinctive; SIFT gets this from normalised histograms of gradient orientations.
+</SayIt>
+
+<QAList>
+<QA q="Is the descriptor the image patch itself?">
+No. It is computed from the patch. The patch is pixels; the descriptor is a shorter, more robust summary of it.
+</QA>
+<QA q="Why compare with distance?">
+If two descriptors describe the same spot, their numbers are nearly the same, so the difference between them (the distance) is small.
+</QA>
+<QA q="Why not use the descriptor everywhere, not only at keypoints?">
+You can (that is dense matching, and HOG does it over a window). But at flat or edge pixels the descriptor is not distinctive, so matches there are unreliable. Keypoints are the places where it works best.
+</QA>
+</QAList>

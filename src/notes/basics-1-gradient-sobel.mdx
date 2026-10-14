@@ -1,0 +1,125 @@
+---
+title: Image gradient and the Sobel operator
+course: Image Processing Basics
+section: "1"
+date: 2026-10-14
+summary: What a gradient is on a pixel grid, how Sobel computes it, and why Harris, SIFT and HOG all start from it.
+---
+
+## The problem
+
+Almost every classic vision method (Harris, SIFT, HOG, Canny edges) starts with the same question: **at this pixel, how fast does the brightness change, and in which direction?**
+
+<Goal>
+Turn an image into two new images, $I_x$ and $I_y$, that say how brightness changes when moving right and when moving down. Together they give an arrow at every pixel.
+</Goal>
+
+## What a gradient is
+
+Think of the image as a landscape: brightness is height. At every point:
+
+- $I_x = \partial \ell / \partial x$ is the slope when you walk **right**,
+- $I_y = \partial \ell / \partial y$ is the slope when you walk **down**.
+
+Put them together as an arrow:
+
+<KeyEq name="Image gradient">
+$$
+\nabla \ell = \begin{bmatrix} I_x \\ I_y \end{bmatrix},\qquad
+\text{strength } m = \sqrt{I_x^2 + I_y^2},\qquad
+\text{direction } \theta = \operatorname{atan2}(I_y, I_x)
+$$
+</KeyEq>
+
+The arrow points **uphill**: from dark to bright, the way brightness rises fastest. Its length says how steep it is.
+
+- Flat area: $m = 0$, no arrow.
+- Edge: a long arrow pointing **across** the edge (perpendicular to it).
+- Corner: arrows in two different directions close together.
+
+<Figure caption="Gradient arrows on a bright disk. Inside and outside the disk the image is flat, so there are no arrows. On the rim, every arrow points across the edge, toward the bright centre.">
+  <GradientField />
+</Figure>
+
+## From derivative to pixels
+
+A real derivative needs a smooth function. An image is a grid of numbers, so we approximate the slope with **differences between neighbours**:
+
+$$
+I_x(x, y) \approx \frac{\ell(x+1, y) - \ell(x-1, y)}{2},\qquad
+I_y(x, y) \approx \frac{\ell(x, y+1) - \ell(x, y-1)}{2}
+$$
+
+This is a **filter** (kernel): a small grid of weights slid over the image. At each pixel, multiply the neighbours by the weights and add them up (convolution, strictly correlation here). The difference above is the kernel $[-1\ \ 0\ \ +1]$.
+
+**Problem:** it uses one row only. A single noisy pixel gives a fake edge.
+
+## The Sobel operator
+
+Sobel combines the difference with a little smoothing in the other direction. It looks at three rows and counts the middle row twice:
+
+<KeyEq name="Sobel kernels">
+$$
+S_x = \begin{bmatrix} -1 & 0 & +1 \\ -2 & 0 & +2 \\ -1 & 0 & +1 \end{bmatrix}
+= \begin{bmatrix} 1 \\ 2 \\ 1 \end{bmatrix} \begin{bmatrix} -1 & 0 & +1 \end{bmatrix},\qquad
+S_y = S_x^\top = \begin{bmatrix} -1 & -2 & -1 \\ 0 & 0 & 0 \\ +1 & +2 & +1 \end{bmatrix}
+$$
+</KeyEq>
+
+Read $S_x$ as two steps:
+
+- $[-1\ \ 0\ \ +1]$ across: **right minus left**, the derivative.
+- $[1\ \ 2\ \ 1]^\top$ down: **average 3 rows**, centre weighted most. This is the smoothing that cuts noise.
+
+So **Sobel = derivative in one direction × smoothing in the other**. $S_y$ is the same thing turned 90°.
+
+Try it: click any pixel and see the 3×3 neighbourhood multiplied by each kernel.
+
+<Figure caption="Sobel on a 10×10 image of a bright tilted square (values 20 and 200). Flat pixels give (0, 0). On the slanted edges both Ix and Iy are non-zero, so the arrow is diagonal.">
+  <SobelProbe />
+</Figure>
+
+### Worked example
+
+```
+image patch        Sobel x
+ 10  10  80       -1  0  +1
+ 10  10  80       -2  0  +2
+ 10  10  80       -1  0  +1
+```
+
+- Left column: $(-1 - 2 - 1) \times 10 = -40$
+- Middle column: $0$
+- Right column: $(+1 + 2 + 1) \times 80 = +320$
+- $I_x = 280$. With $S_y$, nothing changes going down, so $I_y = 0$.
+
+Gradient $= (280, 0)$: pointing right, strong. A vertical edge.
+
+Sobel's output is not divided by anything: $280 = 4 \times 70$, the brightness step times the weights $1+2+1$. The plain central difference above would give $70 / 2 = 35$, so Sobel is $8\times$ larger. Harris, SIFT and HOG only compare gradients with each other, so this fixed scale does not matter.
+
+## What it gives us
+
+- **Harris:** $M = \sum \begin{bmatrix} I_x^2 & I_xI_y \\ I_xI_y & I_y^2 \end{bmatrix}$, built straight from these two images.
+- **SIFT and HOG:** use the direction $\theta$ and strength $m$ at every pixel to build histograms.
+- **Edges (Canny):** keep pixels where $m$ is a local maximum across the edge.
+
+<SayIt>
+The gradient is the vector of the image's x and y derivatives: it points from dark to bright, across the edge, and its length is the edge strength. On a pixel grid we approximate it with Sobel, which is a central difference in one direction times a 1-2-1 smoothing in the other, so it is less sensitive to noise.
+</SayIt>
+
+<QAList>
+<QA q="Why does the gradient point across the edge, not along it?">
+Along the edge the brightness stays the same, so the slope that way is 0. The steepest rise is straight across, from the dark side to the bright side.
+</QA>
+<QA q="Why is the middle row weighted 2?">
+It is the row through the pixel itself, so it is the most relevant. 1-2-1 is a small approximation of a Gaussian blur.
+</QA>
+<QA q="What about Prewitt, Scharr?">
+Same idea with different smoothing weights. Prewitt uses 1-1-1 (plain average). Scharr uses 3-10-3, which gives more accurate directions. Sobel is the common default.
+</QA>
+<QA q="Why atan2 and not atan?">
+atan(Iy/Ix) cannot tell (1, 1) from (−1, −1), and breaks when Ix = 0. atan2 uses both signs and gives the full 360°.
+</QA>
+</QAList>
+
+**See also:** [Harris corner detection](#/seminar-40-3-2-1-harris), [Image descriptors](#/basics-2-image-descriptors), [HOG](#/basics-3-hog).

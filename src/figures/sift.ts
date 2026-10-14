@@ -50,3 +50,13 @@ export function vector(hist: number[][][]) {
 
 export const dist = (a: number[], b: number[]) => Math.hypot(...a.map((x, i) => x - b[i]))
 export const ssd = (a: number[][], b: number[][]) => a.flat().reduce((s, x, i) => s + (x - b.flat()[i]) ** 2, 0)
+
+/** An L-shaped corner: bright in the lower-right quarter. */
+export function cornerPatch(gain = 1, offset = 0): number[][] {
+  return Array.from({ length: P }, (_, y) => Array.from({ length: P }, (_, x) => gain * (x >= 7 && y >= 7 ? 200 : 40) + offset))
+}
+
+/** Diagonal stripes. */
+export function stripePatch(gain = 1, offset = 0): number[][] {
+  return Array.from({ length: P }, (_, y) => Array.from({ length: P }, (_, x) => gain * (Math.floor((x + y) / 4) % 2 ? 200 : 40) + offset))
+}

@@ -34,6 +34,7 @@ const bySection = (a: Note, b: Note) => {
 export const notes: Note[] = Object.entries(modules)
   .map(([path, mod]) => ({
     ...mod.meta,
+    section: String(mod.meta.section), // YAML reads "3" as a number
     slug: path.replace('./notes/', '').replace('.mdx', ''),
     Body: mod.default,
   }))

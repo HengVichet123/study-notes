@@ -1,0 +1,118 @@
+---
+title: HOG (Histogram of Oriented Gradients)
+course: Image Processing Basics
+section: "3"
+date: 2026-10-14
+summary: Describe a whole window by where its edges point, then classify it. The classic pedestrian detector.
+---
+
+## The problem
+
+We want to answer **"is there a person in this window?"** for every window position in an image. The classifier needs a description of the window that:
+
+- looks the same for different people (clothes, colours, lighting),
+- looks different for non-people (trees, cars, walls),
+- does not care if the person is a few pixels off-centre.
+
+<Goal>
+Turn a 64×128 window into a fixed-length vector that captures its **shape** (outline) and ignores colour, brightness and small shifts. Then a simple classifier can separate "person" from "not person".
+</Goal>
+
+Raw pixels fail at all three: a person in a white shirt and one in a black shirt have completely different pixels, but the same outline.
+
+## The idea
+
+An object's shape is mostly its **edges**, and edges are described by [gradients](#/basics-1-gradient-sobel). So describe the window by **which way the edges point, roughly where**. That is HOG, from Dalal and Triggs (2005).
+
+## Why a histogram of gradients?
+
+This is the key question. Each word does a job.
+
+**Why gradients, not pixels?**
+- A gradient does not change when you add a constant to the brightness ($\ell + c$): the derivative of a constant is 0.
+- The **direction** does not change when you scale the contrast ($a\,\ell$): the arrow just gets longer.
+- Gradients are large at edges and 0 in flat areas, so they keep the outline and drop the boring parts.
+
+**Why only the direction (orientation)?**
+- The direction tells you the edge's shape: vertical sides of legs, horizontal shoulders, curved head.
+- The length depends on contrast, which depends on lighting and clothes. So the length is only used as a vote weight, and later normalised away.
+
+**Why a histogram, not the gradient at every pixel?**
+- If you kept the arrow at every pixel, moving the person by 1 pixel would change every number. The descriptor would be fragile.
+- A histogram **counts** directions inside a small cell, and forgets exactly where in the cell each one was. Move the edge a pixel or two inside the cell and the counts stay the same.
+- It also **compresses**: 64 pixels × 2 numbers → 9 numbers per cell.
+
+**Why cells, not one histogram for the whole window?**
+- One histogram for the whole window would lose all layout: "vertical edges somewhere" fits a person, a tree and a door.
+- Small cells keep the coarse layout: vertical edges at the bottom (legs), a round shape at the top (head).
+
+So the histogram is the compromise: **exact enough to keep the shape, loose enough to ignore small shifts and lighting.**
+
+## The recipe
+
+1. **Window:** 64×128 pixels (a standing person).
+2. **Gradients:** $[-1\ \ 0\ \ +1]$ in $x$ and $y$ at every pixel (Dalal and Triggs found this simple filter works better than Sobel here). Get strength $m$ and direction $\theta$.
+3. **Cells:** split the window into 8×8-pixel cells → 8 × 16 cells.
+4. **Histogram per cell:** 9 bins over $0^\circ$–$180^\circ$ (20° each). Each pixel adds its strength $m$ to the bin of its direction. Directions are **unsigned**: $\theta$ and $\theta + 180^\circ$ count the same, so dark-on-light and light-on-dark edges look alike (a black or white shirt gives the same outline).
+5. **Blocks:** group 2×2 cells into a block (36 numbers), sliding by one cell, so blocks overlap.
+6. **Normalise each block:** $\mathbf v \leftarrow \mathbf v / \sqrt{\|\mathbf v\|^2 + \varepsilon^2}$. This removes local contrast, for example one side of the person in shadow.
+7. **Concatenate** all blocks into one vector.
+8. **Classify** with a linear SVM: $\text{score} = \mathbf w^\top \mathbf x + b$; person if score $> 0$.
+
+<KeyEq name="HOG vector length for a 64×128 window">
+$$
+\underbrace{(8-1)\times(16-1)}_{105 \text{ blocks}} \times \underbrace{2 \times 2}_{\text{cells}} \times \underbrace{9}_{\text{bins}} = 3780
+$$
+</KeyEq>
+
+<Figure caption="Left: a 64×128 window with a person shape and its 8×8 cell grid. Right: the usual HOG picture. Each cell shows its 9 bins as lines drawn along the edge direction (perpendicular to the gradient), brighter and longer for a bigger bin. The outline of the person appears; flat cells are empty.">
+  <HogPerson />
+</Figure>
+
+<Figure caption="Cells group into 2×2 blocks that overlap by one cell. Each block is normalised separately, so each inner cell appears in 4 blocks, each time with a different normalisation.">
+  <HogBlocks />
+</Figure>
+
+## Detecting people in a full image
+
+The window is fixed at 64×128, so:
+
+1. Slide the window over the image (step of 8 pixels).
+2. Repeat on smaller and smaller copies of the image (an image pyramid), to find people of different sizes.
+3. Keep windows with a high SVM score, and merge overlapping ones (non-maximum suppression).
+
+## HOG vs SIFT
+
+Same core idea (histograms of gradient directions in cells, then normalise), different job:
+
+- **Purpose:** SIFT matches one keypoint to another image; HOG classifies a whole window.
+- **Where:** SIFT only at keypoints; HOG on a dense grid over the window.
+- **Rotation:** SIFT rotates the patch to its main direction first; HOG doesn't (people stand upright).
+- **Bins:** SIFT uses 8 signed bins over 360°; HOG uses 9 unsigned bins over 180°.
+- **Normalisation:** SIFT normalises once per descriptor; HOG per overlapping block.
+- **Length:** SIFT 128; HOG 3780 for one 64×128 window.
+
+## Where it stands now
+
+HOG + linear SVM was the standard person detector from 2005 to about 2012, and the basis of the Deformable Part Model. CNNs replaced it, but the first layer of a trained CNN learns filters that look a lot like oriented edge detectors, so the idea lives on.
+
+<SayIt>
+HOG describes a window by histograms of gradient orientations in 8×8 cells, 9 unsigned bins, normalised over overlapping 2×2-cell blocks, giving 3780 numbers for a 64×128 window, then a linear SVM classifies it. Gradients remove brightness changes, the histogram ignores small shifts inside a cell, and block normalisation removes local contrast, so it keeps the object's shape and drops lighting and clothing.
+</SayIt>
+
+<QAList>
+<QA q="Why do we make a histogram of gradients?">
+Because the gradient keeps the edges and ignores brightness, and the histogram counts directions inside a small cell, so small shifts don't change it. Together they describe shape robustly with few numbers. See the section "Why a histogram of gradients?" above.
+</QA>
+<QA q="Why 9 bins and 0–180°?">
+Dalal and Triggs tested this. Unsigned (180°) was better for people because clothes can be darker or lighter than the background. Going beyond about 9 bins did not help.
+</QA>
+<QA q="Why do blocks overlap?">
+Each cell gets normalised with several different neighbourhoods. This makes the result less sensitive to where the shadow or contrast boundary happens to fall. It improved accuracy in the paper, at the cost of a 4× longer vector.
+</QA>
+<QA q="Is HOG a keypoint descriptor?">
+Not usually. It describes a whole window on a dense grid, with no keypoint detection. SIFT is the keypoint descriptor.
+</QA>
+</QAList>
+
+**References.** N. Dalal, B. Triggs, "Histograms of Oriented Gradients for Human Detection", CVPR 2005. D. G. Lowe, "Distinctive Image Features from Scale-Invariant Keypoints", IJCV 2004.
