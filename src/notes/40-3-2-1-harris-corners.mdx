@@ -1,0 +1,249 @@
+---
+title: Harris corner detection
+section: 40.3.2.1
+chapter: 40 · Stereo vision
+date: 2026-10-14
+summary: Why E (Eq. 40.2) is defined the way it is, and how it turns into the matrix M and its eigenvalues.
+---
+
+## The problem
+
+Stereo gives depth from disparity, $Z = fB/d$, so everything depends on matching each point in the left image to the right point in the right image. Matching single pixels by brightness fails: on a smooth surface many shifts look equally good (Fig. 40.7 in the book).
+
+<Goal>
+Before matching, decide **which points can be matched without ambiguity**. A point is matchable only if no nearby position looks like it.
+</Goal>
+
+Harris works on **one image**. It does not compare left and right. Corners are found in each image separately, then matched (SIFT, 40.3.2.2), then depth is filled in between them (40.3.2.3).
+
+## The idea
+
+A good point looks different when you move it in **any** direction.
+
+- Flat area: moving any way changes nothing.
+- Edge: moving across it changes a lot, moving along it changes nothing.
+- Corner: every move changes the patch.
+
+So we need a number that says how much a patch changes when it moves. That number is $E$.
+
+## What ℓ is
+
+$\ell$ is the image, written as a function. You give it a position, it gives back a brightness.
+
+- $(x, y)$ is a position (column, row).
+- $\ell$ is the whole image.
+- $\ell(x, y)$ is one number: the brightness at that position.
+
+The book writes $\ell$ for luminance. Other books write $I(x, y)$ for the same thing.
+
+## Eq. 40.2: the definition of E
+
+<KeyEq name="Eq. 40.2 · sum of squared differences (Harris: auto-correlation function)">
+$$
+E(\Delta x, \Delta y) = \sum_{(x,y)\in P} \big(\ell(x,y) - \ell(x+\Delta x,\ y+\Delta y)\big)^2
+$$
+</KeyEq>
+
+$E$ is not derived from anything. It is a **definition**: a measure someone chose for "how much does the window change when I slide it". Each piece has a job.
+
+- $P$ is the small window around the point (for example 5×5 pixels).
+- $(\Delta x, \Delta y)$ is a small shift of the window, inside the same image.
+- $\ell(x,y)$ is the brightness **before**: the pixel in the original window.
+- $\ell(x+\Delta x, y+\Delta y)$ is the brightness **after**: the pixel you land on after moving.
+- The difference, before minus after, is how much that one pixel changed.
+- **Square** it so changes cannot cancel: $(+50) + (-50) = 0$ would look like "no change", but $50^2 + 50^2 = 5000$ does not.
+- **Sum** over the window so one noisy pixel does not decide alone.
+
+Read it like this: $E \approx 0$ means the neighbour position looks the same (bad for matching). $E$ large means it looks different (good).
+
+Try it below. Pick a patch, then tap a direction around the circle. The blue square is the window, the dashed orange square is the window after the shift, and each spoke is $E$ for that shift.
+
+<Figure caption="E for the 8 one-pixel shifts on a small image (5×5 window, dark 30, bright 200). On the edge, moves along the edge give E = 0. Only the corner has a large E in every direction.">
+  <EProbe />
+</Figure>
+
+The largest $E$ cannot tell an edge from a corner (both have a big value somewhere). The **smallest** $E$ over all directions can. So the rule we want is
+
+$$
+\text{corner} \iff \min_{\|\mathbf d\| = 1} E(\mathbf d) \text{ is large.}
+$$
+
+Trying every angle is slow. The rest of the derivation finds this minimum in closed form.
+
+## Step 1: Taylor expansion of the after term
+
+<Goal>
+Get rid of the shifted image $\ell(x+\Delta x, y+\Delta y)$, so $E$ depends on the shift directly.
+</Goal>
+
+### What ∂ℓ/∂x · Δx means
+
+$\partial \ell / \partial x$ is a **rate**: brightness change per 1 pixel moved right. $\Delta x$ is a **distance**: how many pixels you move. Rate times distance is the change, the same as speed × time = distance travelled.
+
+<Figure caption="Brightness along one row. Slope 10 per pixel, move 3 pixels: brightness rises 10 × 3 = 30. The run is a position step; the rise is a brightness change.">
+  <SlopeFigure />
+</Figure>
+
+Be careful with the vertical axis here: it is **brightness**, not the image's $y$ direction. Think of the image as a landscape where bright pixels are high ground.
+
+### Where the formula comes from
+
+Start from the definition of the derivative:
+
+$$
+\frac{\partial \ell}{\partial x} = \lim_{\Delta x \to 0} \frac{\ell(x+\Delta x) - \ell(x)}{\Delta x}
+$$
+
+For a small but real $\Delta x$, multiply both sides by $\Delta x$ and move $\ell(x)$ across:
+
+$$
+\ell(x+\Delta x) \approx \ell(x) + \frac{\partial \ell}{\partial x}\,\Delta x
+$$
+
+In 2D, move in $x$ and then in $y$; each direction adds its own change:
+
+<KeyEq name="First-order Taylor expansion (linear approximation)">
+$$
+\ell(x+\Delta x,\ y+\Delta y) \approx \ell(x,y) + \frac{\partial \ell}{\partial x}\,\Delta x + \frac{\partial \ell}{\partial y}\,\Delta y
+$$
+</KeyEq>
+
+Every term on the right is a **brightness**, not a position: brightness before, plus the change from moving in $x$, plus the change from moving in $y$. The slopes convert a position step into a brightness change.
+
+It is "≈" because the full expansion also has $\Delta x^2$, $\Delta x \Delta y$, $\Delta y^2$ terms. For a small shift those are much smaller ($0.1^2 = 0.01$), so they are dropped.
+
+## Step 2: put it back into E
+
+Write $I_x = \partial \ell / \partial x$ and $I_y = \partial \ell / \partial y$ (computed with a Sobel filter). Before minus after:
+
+$$
+\ell(x,y) - \big(\ell(x,y) + I_x\Delta x + I_y\Delta y\big) = -\big(I_x\Delta x + I_y\Delta y\big)
+$$
+
+The two $\ell(x,y)$ cancel. E only cares about the **change**, and the change depends only on slope × shift. The square that was already in $E$ removes the minus sign:
+
+$$
+E(\Delta x, \Delta y) \approx \sum_{P} \big(I_x\,\Delta x + I_y\,\Delta y\big)^2
+$$
+
+Expand the square with $(a+b)^2 = a^2 + 2ab + b^2$:
+
+$$
+\big(I_x\Delta x + I_y\Delta y\big)^2 = I_x^2\,\Delta x^2 + 2\,I_xI_y\,\Delta x\Delta y + I_y^2\,\Delta y^2
+$$
+
+$\Delta x$ and $\Delta y$ are the same for every pixel, so they come out of the sum:
+
+$$
+E \approx \underbrace{\Big(\sum_P I_x^2\Big)}_{A}\Delta x^2 + 2\underbrace{\Big(\sum_P I_xI_y\Big)}_{B}\Delta x\Delta y + \underbrace{\Big(\sum_P I_y^2\Big)}_{C}\Delta y^2
+$$
+
+## Step 3: matrix form
+
+<Goal>
+Pack the whole patch into one small object that gives $E$ for any direction.
+</Goal>
+
+<KeyEq name="Structure tensor M (second-moment matrix, auto-correlation matrix)">
+$$
+E(\mathbf d) \approx \mathbf d^\top M\,\mathbf d,\qquad
+M = \sum_{P} \begin{bmatrix} I_x^2 & I_xI_y \\ I_xI_y & I_y^2 \end{bmatrix} = \begin{bmatrix} A & B \\ B & C \end{bmatrix},\qquad
+\mathbf d = \begin{bmatrix}\Delta x \\ \Delta y\end{bmatrix}
+$$
+</KeyEq>
+
+Check: $[\Delta x\ \Delta y]\,M\,[\Delta x\ \Delta y]^\top = A\Delta x^2 + 2B\Delta x\Delta y + C\Delta y^2$. Three numbers now describe how the patch reacts to every small move. $M$ is symmetric and positive semi-definite, since $\mathbf d^\top M \mathbf d = \sum (\nabla\ell^\top \mathbf d)^2 \ge 0$.
+
+## Step 4: eigenvalues give the weakest direction
+
+For unit $\mathbf d$, the smallest value of $\mathbf d^\top M \mathbf d$ is the smaller eigenvalue of $M$, reached along its eigenvector (Rayleigh quotient). So the rule becomes
+
+<KeyEq name="Corner test (the book's rule; strictly the Shi–Tomasi version)">
+$$
+\text{corner} \iff \lambda_{\min}(M) > \lambda_c
+$$
+</KeyEq>
+
+For a 2×2 matrix the eigenvalues have a closed form:
+
+$$
+\lambda_{\max,\min} = \frac{A+C}{2} \pm \sqrt{\Big(\frac{A-C}{2}\Big)^2 + B^2}
+$$
+
+<Figure caption="The curve where E is constant, around zero shift. A tight curve means E grows fast in that direction. The edge is long along the edge direction, because moving that way changes nothing.">
+  <LevelSets />
+</Figure>
+
+<Figure caption="Classify each point by its two eigenvalues. Both large: corner. One large: edge. Both small: flat.">
+  <EigenRegions />
+</Figure>
+
+### Why the Hessian keeps coming up
+
+The Hessian is the matrix of **second derivatives**. It describes curvature, how a function bends. Take second derivatives of $E \approx \sum (I_x\Delta x + I_y\Delta y)^2$ with respect to the shift:
+
+$$
+\frac{\partial^2 E}{\partial \Delta x^2} = 2\sum I_x^2,\qquad
+\frac{\partial^2 E}{\partial \Delta x\,\partial \Delta y} = 2\sum I_xI_y,\qquad
+\frac{\partial^2 E}{\partial \Delta y^2} = 2\sum I_y^2
+$$
+
+So the **Hessian of E is 2M**. The eigenvalues of $M$ are the curvature of $E$ along its main directions: a bowl (corner), a valley (edge), or a flat plane (flat).
+
+Do not mix this up with the **Hessian of the image** $\ell$, which uses $\ell_{xx}, \ell_{xy}, \ell_{yy}$. That one is used by the Hessian blob detector, and by SIFT to reject keypoints on edges.
+
+## Step 5: Harris' own score
+
+Harris and Stephens (1988) avoided the square root by using two invariants of $M$: $\det M = AC - B^2 = \lambda_1\lambda_2$ and $\operatorname{tr} M = A + C = \lambda_1 + \lambda_2$.
+
+<KeyEq name="Harris response, k ≈ 0.04–0.06">
+$$
+R = \det M - k\,(\operatorname{tr} M)^2
+$$
+</KeyEq>
+
+- Flat: $|R|$ small.
+- Edge: $R \approx -k\lambda_{\max}^2$, negative.
+- Corner: $R = \lambda^2(1-4k)$ when $\lambda_1 = \lambda_2 = \lambda$, large and positive.
+
+## The algorithm
+
+1. Compute $I_x$, $I_y$ with Sobel filters.
+2. Compute $I_x^2$, $I_xI_y$, $I_y^2$ at every pixel.
+3. Sum them over the window (usually a Gaussian blur) to get $A$, $B$, $C$.
+4. Score each pixel with $\lambda_{\min}$ or $R$.
+5. Threshold, then keep only local maxima (non-maximum suppression).
+
+Properties: invariant to rotation and to a brightness offset; the threshold depends on contrast; **not** invariant to scale, which is why SIFT largely replaced it.
+
+<SayIt>
+E is the sum of squared differences between the patch and its shifted copy. With a first-order Taylor expansion it becomes a quadratic form $\mathbf d^\top M \mathbf d$ with the structure tensor $M$, which is half the Hessian of $E$. The eigenvalues of $M$ are the change in the strongest and weakest directions, so both large means a corner.
+</SayIt>
+
+## Questions from the seminar (2026-10-14)
+
+<QAList>
+<QA q="Why is E equal to that? Where does it come from?">
+It is a definition, not a result. It was chosen to measure how much the window changes when you slide it: compare each pixel before and after, square so signs cannot cancel, add up over the window. It is the standard sum of squared differences (SSD).
+</QA>
+<QA q="Is ℓ a point?">
+No. $\ell$ is the whole image. $(x, y)$ is the point, and $\ell(x, y)$ is the brightness at that point.
+</QA>
+<QA q="What is ℓ(x+Δx, y+Δy)?">
+The brightness of the pixel you land on after moving $\Delta x$ right and $\Delta y$ down. Its approximation is the first-order Taylor expansion $\ell(x,y) + I_x\Delta x + I_y\Delta y$.
+</QA>
+<QA q="Why does the Taylor expansion look like that?">
+It is the definition of the derivative, rearranged. Slope = change ÷ distance, so for a small move, change ≈ slope × distance. New brightness = old brightness + change.
+</QA>
+<QA q="Why did ℓ(x,y) disappear from E?">
+Before minus after: $\ell - (\ell + I_x\Delta x + I_y\Delta y)$. The $\ell(x,y)$ is in both, so it cancels. Only the change is left.
+</QA>
+<QA q="Why square?">
+So positive and negative changes cannot cancel, so big changes count more than small noise, and because a square is smooth. After Taylor, expanding the square produces $I_x^2$, $I_xI_y$, $I_y^2$, which are the entries of $M$.
+</QA>
+<QA q="What is the Hessian?">
+The matrix of second derivatives, which measures curvature. Here the Hessian of $E$ with respect to the shift is exactly $2M$.
+</QA>
+</QAList>
+
+**References.** C. Harris, M. Stephens, "A Combined Corner and Edge Detector", Alvey Vision Conference, 1988. J. Shi, C. Tomasi, "Good Features to Track", CVPR 1994. A. Torralba, P. Isola, W. T. Freeman, *Foundations of Computer Vision*, Ch. 40, [visionbook.mit.edu](https://visionbook.mit.edu/3d_scene_understanding_stereo.html).
