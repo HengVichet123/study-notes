@@ -1,15 +1,15 @@
 import { useEffect } from 'react'
 import { Link, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { MDXProvider } from '@mdx-js/react'
-import { chapters, notes } from './notes'
+import { courses, notes } from './notes'
 import { mdxComponents } from './components'
 
 function NoteList({ activeSlug }: { activeSlug?: string }) {
   return (
     <nav className="note-list" aria-label="Notes">
-      {chapters.map(({ chapter, notes }) => (
-        <section key={chapter} className="group">
-          <h2 className="group-header">{chapter}</h2>
+      {courses.map(({ course, notes }) => (
+        <section key={course} className="group">
+          <h2 className="group-header">{course}</h2>
           <ul className="inset">
             {notes.map((n) => (
               <li key={n.slug}>
@@ -38,10 +38,10 @@ function Home() {
   return (
     <div className="page home">
       <header className="large-title">
-        <h1>Seminar Notes</h1>
+        <h1>Study Notes</h1>
         <p className="subtitle">
-          M1 seminar, Foundations of Computer Vision (visionbook.mit.edu). {notes.length}{' '}
-          {notes.length === 1 ? 'note' : 'notes'}.
+          Classes and materials, explained step by step. {courses.length}{' '}
+          {courses.length === 1 ? 'course' : 'courses'}, {notes.length} {notes.length === 1 ? 'note' : 'notes'}.
         </p>
       </header>
       <NoteList />
@@ -69,7 +69,7 @@ function NotePage() {
     <article className="page note">
       <header className="large-title">
         <p className="kicker">
-          Section {note.section} · {note.chapter}
+          {note.course} · {note.chapter ? `${note.section}, ${note.chapter}` : note.section}
         </p>
         <h1>{note.title}</h1>
         <p className="subtitle">{note.summary}</p>
@@ -90,13 +90,13 @@ export default function App() {
   useEffect(() => window.scrollTo(0, 0), [pathname])
   const current = notes.find((n) => n.slug === activeSlug)
   useEffect(() => {
-    document.title = current ? `${current.title} · Seminar Notes` : 'Seminar Notes'
+    document.title = current ? `${current.title} · Study Notes` : 'Study Notes'
   }, [current])
 
   return (
     <div className={'shell' + (activeSlug ? ' has-note' : '')}>
       <aside className="sidebar">
-        <div className="sidebar-title">Seminar Notes</div>
+        <div className="sidebar-title">Study Notes</div>
         <NoteList activeSlug={activeSlug} />
       </aside>
       <div className="detail">

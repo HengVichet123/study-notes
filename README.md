@@ -1,16 +1,17 @@
-# Seminar Notes
+# Study Notes
 
-Study notes for the M1 seminar (Foundations of Computer Vision, visionbook.mit.edu).
-Live: https://hengvichet123.github.io/seminar-notes/
+My documentation of classes and materials, explained step by step.
+Live: https://hengvichet123.github.io/study-notes/
 
 ## Add a new note
 
-1. Create `src/notes/<section>-<short-name>.mdx`, for example `src/notes/40-4-homography.mdx`.
+1. Create `src/notes/<short-name>.mdx`, for example `src/notes/seminar-40-4-homography.mdx`.
 2. Start it with:
 
    ```mdx
    ---
    title: Homography
+   course: M1 Seminar · Computer Vision
    section: 40.4
    chapter: 40 · Stereo vision
    date: 2026-10-20
@@ -18,8 +19,10 @@ Live: https://hengvichet123.github.io/seminar-notes/
    ---
    ```
 
+   `course` groups notes in the list (use the exact same text for every note of one class).
+   `section` sorts them inside the course (`40.4`, `Lecture 3`, ...). `chapter` is optional.
 3. Write Markdown. Math uses `$...$` and `$$...$$` (KaTeX).
-4. Push to `main`. GitHub Actions builds and publishes it. It appears in the list, sorted by section.
+4. Push to `main`. GitHub Actions builds and publishes it.
 
 ## Blocks you can use in any note (no import needed)
 

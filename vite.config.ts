@@ -7,7 +7,7 @@ import remarkFrontmatter from 'remark-frontmatter'
 import remarkMdxFrontmatter from 'remark-mdx-frontmatter'
 
 export default defineConfig({
-  base: '/seminar-notes/',
+  base: '/study-notes/',
   plugins: [
     {
       enforce: 'pre',
