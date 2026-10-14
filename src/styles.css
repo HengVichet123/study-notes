@@ -352,3 +352,7 @@ text.fill-blue { fill: var(--blue); }
 
 /* 3D backdrop: soft sky fading to a pale floor */
 .story-stage, .epi-3d { background: linear-gradient(180deg, #eaf2fd 0%, #f6f8fc 55%, #eceef3 100%); }
+.story-inset { position: absolute; bottom: 12px; left: 12px; z-index: 40; width: min(38%, 200px); background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-radius: 12px; padding: 8px 10px; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.1); }
+.story-inset svg { width: 100%; height: auto; display: block; font-family: var(--font); }
+.story-inset-title { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+.story-inset-note { font-size: 12px; color: var(--label-2); margin-top: 4px; }

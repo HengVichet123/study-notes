@@ -123,6 +123,8 @@ export function EpipolarStory() {
     setT(STEPS[Math.max(0, Math.min(STEPS.length - 1, i))].start + 0.001)
     setPlaying(true)
   }
+  const s1 = STEPS[1]
+  const inset = ramp(t, s1.start + 0.8, 0.5) * (1 - ramp(t, s1.end - 0.4, 0.4))
   const s5 = STEPS[5]
   const overlay = ramp(t, s5.start + 0.2, 0.6) * (1 - ramp(t, s5.end - 0.3, 0.5))
   const atEnd = t >= TOTAL
@@ -133,6 +135,17 @@ export function EpipolarStory() {
         <Suspense fallback={<div className="epi-3d-loading">Loading 3D view…</div>}>
           <EpiStory3D t={t} step={step} />
         </Suspense>
+        {inset > 0.01 && (
+          <div className="story-inset" style={{ opacity: inset, transform: `translateY(${(1 - inset) * 8}px)` }}>
+            <div className="story-inset-title">Photo 1</div>
+            <svg viewBox={`-4 -4 ${PW + 8} ${PH + 8}`}>
+              <rect width={PW} height={PH} rx="6" className="story-photo" />
+              <circle cx={toPx(p1img.x, p1img.y)[0]} cy={toPx(p1img.x, p1img.y)[1]} r="6" fill="#007aff" />
+              <text x={toPx(p1img.x, p1img.y)[0] + 10} y={toPx(p1img.x, p1img.y)[1] + 5} className="t-label" fill="#007aff">p1</text>
+            </svg>
+            <div className="story-inset-note">We see p1. Where is P?</div>
+          </div>
+        )}
         {overlay > 0.01 && (
           <div className="story-overlay" style={{ opacity: overlay }}>
             <MatchingView t={t} start={s5.start} />

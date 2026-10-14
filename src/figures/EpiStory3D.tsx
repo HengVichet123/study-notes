@@ -81,15 +81,13 @@ export default function EpiStory3D({ t, step }: { t: number; step: number }) {
   const s0 = STEPS[0].start
   const [, s1, s2, s3, s4, s5, s6] = STEPS.map((s) => s.start)
 
-  // step 1: cameras, then P
+  // step 1: cameras only
   const camOp = ramp(t, s0 + 0.2, 0.9)
-  const pOp = ramp(t, s0 + 1.6)
-  // step 2: light from P to camera 1, then p1
-  const lightK = ramp(t, s1 + 0.4, 1.6)
-  const p1Op = ramp(t, s1 + 2.1, 0.4)
-  // step 3: P becomes unknown, the full ray and the "?" candidates
-  const pGhost = ramp(t, s2 + 0.2, 0.8)
-  const rayK = ramp(t, s2 + 0.6, 1.4)
+  // step 2: we see p1 on photo 1 (it pulses once)
+  const p1Op = ramp(t, s1 + 0.5, 0.4)
+  const p1Pulse = ramp(t, s1 + 0.5, 0.4) * (1 - ramp(t, s1 + 1.3, 0.8))
+  // step 3: the ray from camera 1 through p1, and the "?" candidates
+  const rayK = ramp(t, s2 + 0.4, 1.6)
   const ghostOp = (i: number) => ramp(t, s2 + 1.8 + i * 0.25, 0.4) * (1 - ramp(t, s5 - 0.6, 0.6))
   // step 4: highlight the three known points, baseline, plane
   const hl = ramp(t, s3 + 0.2, 0.4) * (1 - ramp(t, s3 + 1.6, 0.6))
@@ -107,7 +105,6 @@ export default function EpiStory3D({ t, step }: { t: number; step: number }) {
   const ray2K = ramp(t, s6 + 0.5, 1.5)
   const pFound = ramp(t, s6 + 2.1, 0.5)
 
-  const pSolid = pOp * (1 - pGhost) + pFound
   const rayFarOp = 1 - 0.55 * ramp(t, s4 + 5.2, 1)
 
   return (
@@ -139,8 +136,7 @@ export default function EpiStory3D({ t, step }: { t: number; step: number }) {
       <Seg a={cam1.O} b={cam2.O} k={baseK} color={INK} width={1.8} dashed />
       <Label at={lerp3(cam1.O, cam2.O, 0.5)} text="baseline" opacity={baseK * (1 - ramp(t, s5))} dy={16} />
 
-      {/* light from P to camera 1 (step 2), replaced by the full ray (step 3) */}
-      <Seg a={P} b={cam1.O} k={lightK} color={RED} width={2.5} opacity={1 - rayK} />
+      {/* the ray from camera 1 through p1 */}
       <Seg a={cam1.O} b={rayFar} k={rayK} color={RED} width={3} opacity={rayFarOp} />
       <Label at={ray1(7)} text="ray through p1" opacity={rayK * (1 - ramp(t, s3))} dy={-6} tone="red" />
 
@@ -170,10 +166,10 @@ export default function EpiStory3D({ t, step }: { t: number; step: number }) {
       <Seg a={cam2.O} b={ray2Far} k={ray2K} color={GREEN} width={3} />
 
       {/* points */}
-      <Dot at={P} color="#5ac8fa" r={0.11} opacity={Math.min(1, pSolid)} scale={1 + 0.5 * pFound * (1 - ramp(t, s6 + 2.8, 0.6))} />
-      <Dot at={P} color="#5ac8fa" r={0.11} opacity={0.25 * pGhost * (1 - pFound)} />
-      <Label at={P} text={pFound > 0.5 ? `P · depth found` : 'P'} opacity={Math.max(pOp * (1 - pGhost), pFound)} tone={pFound > 0.5 ? 'green' : undefined} />
-      <Dot at={p1} color={BLUE} r={0.055} opacity={p1Op} scale={1 + 0.8 * hl} onTop />
+      {/* P only appears at the end, once we have found it */}
+      <Dot at={P} color="#5ac8fa" r={0.11} opacity={pFound} scale={1 + 0.5 * pFound * (1 - ramp(t, s6 + 2.8, 0.6))} />
+      <Label at={P} text="P · found" opacity={pFound} tone="green" />
+      <Dot at={p1} color={BLUE} r={0.055} opacity={p1Op} scale={1 + 0.8 * hl + 1.4 * p1Pulse} onTop />
       <Label at={p1} text="p1" opacity={p1Op} tone="blue" />
       <Dot at={p2} color={GREEN} r={0.055} opacity={p2Op} onTop />
       <Label at={p2} text="p2" opacity={p2Op} tone="green" />

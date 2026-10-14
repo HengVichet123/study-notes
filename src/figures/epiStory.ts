@@ -119,19 +119,19 @@ export interface Step {
 export const STEPS: Step[] = [
   {
     title: 'Two cameras',
-    caption: 'Two cameras, O1 and O2, look at the same point P. In front of each camera floats its photo.',
+    caption: 'Two cameras, O1 and O2, look at the same scene. In front of each camera floats its photo.',
     start: 0, end: 4.5,
     view: { pos: [3.0, 3.0, -4.6], target: [0, 0.3, 2.0] },
   },
   {
-    title: 'Pixel p1',
-    caption: 'Light from P travels to camera 1. Where it crosses photo 1 is the pixel p1.',
+    title: 'We see p1',
+    caption: 'In photo 1 we see a point, p1. Goal: find P, the real 3D point it came from.',
     start: 4.5, end: 9,
-    view: { pos: [4.2, 2.2, -2.4], target: [0.6, 0.4, 1.6] },
+    view: { pos: [5.4, 2.4, -2.2], target: [2.0, 0.3, 1.5] },
   },
   {
-    title: 'Depth unknown',
-    caption: 'But a photo has no depth. Camera 1 only knows p1, so P could be at any of these “?” points: each one is a possible depth.',
+    title: 'Where is P?',
+    caption: 'P must be on the ray from camera 1 through p1. But a photo has no depth, so P could be at any “?” point.',
     start: 9, end: 13.5,
     view: { pos: [7.4, 4.6, -2.4], target: [0, 0.7, 3.4] },
   },
@@ -154,8 +154,8 @@ export const STEPS: Step[] = [
     view: { pos: [-3.6, 1.4, -2.8], target: [-0.9, 0.2, 0.6] },
   },
   {
-    title: 'Depth found',
-    caption: 'Now draw a ray from camera 2 through p2. Where the two rays meet is P, so we know its depth.',
+    title: 'P found',
+    caption: 'Draw a ray from camera 2 through p2. Where the two rays meet is P. We found the 3D point and its depth.',
     start: 34, end: 39.5,
     view: { pos: [3.4, 3.6, -5.0], target: [0, 0.4, 2.4] },
   },
