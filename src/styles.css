@@ -38,7 +38,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px soli
   border-right: 0.5px solid var(--sep);
   padding: 20px 16px 40px;
 }
-.sidebar-title { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; padding: 8px 4px 4px; }
+.sidebar-title { display: block; color: var(--label); border-radius: 8px; font-size: 28px; font-weight: 700; letter-spacing: -0.02em; padding: 8px 4px 4px; }
 .detail { min-width: 0; background: var(--card); }
 .navbar { display: none; }
 
@@ -185,3 +185,4 @@ text.fill-orange { fill: #c46a00; } text.fill-green { fill: #1f8a3b; }
 .probe-verdict { margin: 0; text-align: center; font-size: 15px; color: var(--label-2); }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+.sidebar-title:hover { background: var(--fill); }

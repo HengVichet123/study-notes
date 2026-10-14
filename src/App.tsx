@@ -96,7 +96,7 @@ export default function App() {
   return (
     <div className={'shell' + (activeSlug ? ' has-note' : '')}>
       <aside className="sidebar">
-        <div className="sidebar-title">Study Notes</div>
+        <Link to="/" className="sidebar-title">Study Notes</Link>
         <NoteList activeSlug={activeSlug} />
       </aside>
       <div className="detail">
